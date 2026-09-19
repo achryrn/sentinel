@@ -1,0 +1,77 @@
+<UserControl x:Class="Sentinel.Gui.Views.SettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:Sentinel.Gui">
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" MaxHeight="700">
+            <StackPanel>
+                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="Settings"/>
+                <TextBlock Text="Exclusions and service information. Excluded paths/hashes/signers are skipped by scanners."
+                           Foreground="{StaticResource DimTextBrush}" Margin="0,0,0,12"/>
+
+                <!-- Service info -->
+                <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="16,12">
+                    <StackPanel>
+                        <TextBlock Text="Service" Style="{StaticResource SectionTitleStyle}" FontSize="15"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="140"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Status" Foreground="{StaticResource DimTextBrush}"/>
+                            <TextBlock Grid.Column="1" x:Name="ServiceText"/>
+                            <TextBlock Grid.Column="0" Text="Database" Foreground="{StaticResource DimTextBrush}" Margin="0,6,0,0"/>
+                            <TextBlock Grid.Column="1" x:Name="StoreText" Margin="0,6,0,0"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Exclusions -->
+                <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="16,12" Margin="0,12,0,0">
+                    <StackPanel>
+                        <TextBlock Text="Exclusions" Style="{StaticResource SectionTitleStyle}" FontSize="15"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <ComboBox x:Name="TypeCombo" Width="110" SelectedIndex="0">
+                                <ComboBoxItem Content="Path" Tag="path"/>
+                                <ComboBoxItem Content="Hash" Tag="hash"/>
+                                <ComboBoxItem Content="Signer" Tag="signer"/>
+                            </ComboBox>
+                            <TextBox x:Name="ValueBox" Width="360" VerticalContentAlignment="Center" Margin="8,0,0,0"/>
+                            <Button x:Name="AddBtn" Content="Add" Click="AddExclusion_Click"/>
+                        </StackPanel>
+                        <DataGrid x:Name="ExclGrid" IsReadOnly="True" Height="200">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Type" Binding="{Binding Type}" Width="80"/>
+                                <DataGridTextColumn Header="Value" Binding="{Binding Value}" Width="*"/>
+                                <DataGridTextColumn Header="Added by" Binding="{Binding AddedBy}" Width="80"/>
+                                <DataGridTextColumn Header="Added" Binding="{Binding AddedAtUtc, Converter={StaticResource UtcTimeConverter}}" Width="150"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <Button x:Name="RemoveBtn" Content="Remove selected" Click="RemoveExclusion_Click" HorizontalAlignment="Left" Margin="0,8,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- About / capabilities -->
+                <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="16,12" Margin="0,12,0,0">
+                    <StackPanel>
+                        <TextBlock Text="About" Style="{StaticResource SectionTitleStyle}" FontSize="15"/>
+                        <TextBlock Text="Sentinel is an endpoint security scanner and posture auditor. It performs evidence-based detection using:
+• File scanning: hashing (SHA-256/1/MD5), Authenticode verification, PE parsing (imports, sections, timestamps, overlay), entropy, MOTW, ADS
+• Process analysis: signatures, elevation, parent chains, modules
+• Memory analysis: read-only review of executable private regions, thread start addresses, guard pages (no memory modification, no injection)
+• Network: TCP/UDP connections and listeners mapped to processes
+• Persistence: autoruns-style enumeration (Run keys, services, tasks, WMI, extensions)
+• System audit: updates, Defender, firewall, UAC, accounts, RDP/SMB exposure, Secure Boot/TPM/BitLocker
+• Realtime monitoring: file changes, process creation, registry persistence keys, network deltas
+• Correlation engine: evidence → findings with risk scores and MITRE ATT&amp;CK tactics
+
+Sentinel does NOT claim to be a complete antivirus. It detects suspicious indicators and behaviors; it does not auto-execute files, modify process memory, or delete files without explicit user action." 
+                           TextWrapping="Wrap" Foreground="{StaticResource DimTextBrush}" LineHeight="20"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

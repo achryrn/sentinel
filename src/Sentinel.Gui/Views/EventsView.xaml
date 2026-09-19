@@ -1,0 +1,39 @@
+<UserControl x:Class="Sentinel.Gui.Views.EventsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:Sentinel.Gui">
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0">
+            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="Events"/>
+            <TextBlock Text="Persisted event log: scans, detections, quarantine actions, exclusions, system events."
+                       Foreground="{StaticResource DimTextBrush}" Margin="0,0,0,12"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
+            <Button x:Name="RefreshBtn" Content="Refresh" Click="Refresh_Click"/>
+            <TextBlock x:Name="CountText" Foreground="{StaticResource DimTextBrush}" VerticalAlignment="Center" Margin="12,0,0,0"/>
+        </StackPanel>
+
+        <DataGrid Grid.Row="2" x:Name="EventsGrid" IsReadOnly="True">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Time" Binding="{Binding TimestampUtc, Converter={StaticResource UtcTimeConverter}}" Width="160"/>
+                <DataGridTextColumn Header="Severity" Binding="{Binding Severity}" Width="80">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="{Binding Severity, Converter={StaticResource SeverityToBrush}}"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="100"/>
+                <DataGridTextColumn Header="Message" Binding="{Binding Message}" Width="*"/>
+                <DataGridTextColumn Header="Entity" Binding="{Binding Entity}" Width="200"/>
+            </DataGrid.Columns>
+        </DataGrid>
+    </Grid>
+</UserControl>

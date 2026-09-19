@@ -1,0 +1,36 @@
+<UserControl x:Class="Sentinel.Gui.Views.QuarantineView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:Sentinel.Gui">
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0">
+            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="Quarantine"/>
+            <TextBlock Text="Files moved to the quarantine store. Restore returns them to their original location; delete removes the stored copy."
+                       Foreground="{StaticResource DimTextBrush}" Margin="0,0,0,12"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
+            <Button x:Name="RestoreBtn" Content="Restore selected" Click="Restore_Click"/>
+            <Button x:Name="DeleteBtn" Content="Delete selected" Click="Delete_Click"/>
+            <TextBlock x:Name="CountText" Foreground="{StaticResource DimTextBrush}" VerticalAlignment="Center" Margin="12,0,0,0"/>
+        </StackPanel>
+
+        <DataGrid Grid.Row="2" x:Name="QuarGrid" IsReadOnly="True">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="90"/>
+                <DataGridTextColumn Header="Original path" Binding="{Binding OriginalPath}" Width="*"/>
+                <DataGridTextColumn Header="Size" Binding="{Binding Size, Converter={StaticResource BytesConverter}}" Width="80"/>
+                <DataGridTextColumn Header="SHA-256" Binding="{Binding Sha256, Converter={StaticResource TruncateConverter}}" Width="150"/>
+                <DataGridTextColumn Header="Reason" Binding="{Binding Reason}" Width="160"/>
+                <DataGridTextColumn Header="Signer" Binding="{Binding SignerName}" Width="140"/>
+                <DataGridTextColumn Header="Quarantined" Binding="{Binding QuarantinedAtUtc, Converter={StaticResource UtcTimeConverter}}" Width="150"/>
+            </DataGrid.Columns>
+        </DataGrid>
+    </Grid>
+</UserControl>

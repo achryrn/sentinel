@@ -1,0 +1,38 @@
+<UserControl x:Class="Sentinel.Gui.Views.ProcessesView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:Sentinel.Gui">
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0">
+            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="Processes"/>
+            <TextBlock Text="Running processes with signature, elevation, and behavioral notes."
+                       Foreground="{StaticResource DimTextBrush}" Margin="0,0,0,12"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
+            <Button x:Name="ScanBtn" Content="Rescan processes" Click="Scan_Click"/>
+            <TextBlock x:Name="CountText" Foreground="{StaticResource DimTextBrush}" VerticalAlignment="Center" Margin="12,0,0,0"/>
+        </StackPanel>
+
+        <DataGrid Grid.Row="2" x:Name="ProcGrid" IsReadOnly="True">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="PID" Binding="{Binding Pid}" Width="60"/>
+                <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="180"/>
+                <DataGridTextColumn Header="User" Binding="{Binding UserName}" Width="140"/>
+                <DataGridTextColumn Header="CPU" Binding="{Binding BasePriority}" Width="50"/>
+                <DataGridTextColumn Header="Threads" Binding="{Binding ThreadCount}" Width="60"/>
+                <DataGridTextColumn Header="WS" Binding="{Binding WorkingSetBytes, Converter={StaticResource BytesConverter}}" Width="80"/>
+                <DataGridTextColumn Header="Signature" Binding="{Binding SignatureStatus}" Width="120"/>
+                <DataGridTextColumn Header="Signer" Binding="{Binding SignerName, Converter={StaticResource TruncateConverter}}" Width="160"/>
+                <DataGridTextColumn Header="Elevated" Binding="{Binding IsElevated}" Width="70"/>
+                <DataGridTextColumn Header="Path" Binding="{Binding ExecutablePath, Converter={StaticResource TruncateConverter}}" Width="*"/>
+            </DataGrid.Columns>
+        </DataGrid>
+    </Grid>
+</UserControl>

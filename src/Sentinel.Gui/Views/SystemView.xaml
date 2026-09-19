@@ -1,0 +1,102 @@
+<UserControl x:Class="Sentinel.Gui.Views.SystemView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:Sentinel.Gui">
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0">
+            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="System Security"/>
+            <TextBlock Text="OS hardening posture: updates, Defender, firewall, UAC, accounts, RDP/SMB exposure, secure boot."
+                       Foreground="{StaticResource DimTextBrush}" Margin="0,0,0,12"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
+            <Button x:Name="ReauditBtn" Content="Re-run audit" Click="Reaudit_Click"/>
+            <TextBlock x:Name="StatusText" Foreground="{StaticResource DimTextBrush}" VerticalAlignment="Center" Margin="12,0,0,0"/>
+        </StackPanel>
+
+        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <!-- OS & updates -->
+                <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="16,12">
+                    <StackPanel>
+                        <TextBlock Text="Operating system &amp; updates" Style="{StaticResource SectionTitleStyle}" FontSize="15"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="160"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Version" Foreground="{StaticResource DimTextBrush}"/>
+                            <TextBlock Grid.Column="1" x:Name="OsText"/>
+                            <TextBlock Grid.Column="0" Text="Last boot" Foreground="{StaticResource DimTextBrush}" Margin="0,6,0,0"/>
+                            <TextBlock Grid.Column="1" x:Name="BootText" Margin="0,6,0,0"/>
+                            <TextBlock Grid.Column="0" Text="Last updates" Foreground="{StaticResource DimTextBrush}" Margin="0,6,0,0"/>
+                            <TextBlock Grid.Column="1" x:Name="UpdateText" Margin="0,6,0,0"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Protection -->
+                <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="16,12" Margin="0,12,0,0">
+                    <StackPanel>
+                        <TextBlock Text="Protection" Style="{StaticResource SectionTitleStyle}" FontSize="15"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="160"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Defender" Foreground="{StaticResource DimTextBrush}"/>
+                            <TextBlock Grid.Column="1" x:Name="DefenderText"/>
+                            <TextBlock Grid.Column="0" Text="Firewall" Foreground="{StaticResource DimTextBrush}" Margin="0,6,0,0"/>
+                            <TextBlock Grid.Column="1" x:Name="FirewallText" Margin="0,6,0,0"/>
+                            <TextBlock Grid.Column="0" Text="UAC" Foreground="{StaticResource DimTextBrush}" Margin="0,6,0,0"/>
+                            <TextBlock Grid.Column="1" x:Name="UacText" Margin="0,6,0,0"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Accounts & exposure -->
+                <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="16,12" Margin="0,12,0,0">
+                    <StackPanel>
+                        <TextBlock Text="Accounts &amp; exposure" Style="{StaticResource SectionTitleStyle}" FontSize="15"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="160"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Local admins" Foreground="{StaticResource DimTextBrush}"/>
+                            <TextBlock Grid.Column="1" x:Name="AdminText"/>
+                            <TextBlock Grid.Column="0" Text="Guest account" Foreground="{StaticResource DimTextBrush}" Margin="0,6,0,0"/>
+                            <TextBlock Grid.Column="1" x:Name="GuestText" Margin="0,6,0,0"/>
+                            <TextBlock Grid.Column="0" Text="RDP" Foreground="{StaticResource DimTextBrush}" Margin="0,6,0,0"/>
+                            <TextBlock Grid.Column="1" x:Name="RdpText" Margin="0,6,0,0"/>
+                            <TextBlock Grid.Column="0" Text="SMB" Foreground="{StaticResource DimTextBrush}" Margin="0,6,0,0"/>
+                            <TextBlock Grid.Column="1" x:Name="SmbText" Margin="0,6,0,0"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Hardware security -->
+                <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="16,12" Margin="0,12,0,0">
+                    <StackPanel>
+                        <TextBlock Text="Hardware security" Style="{StaticResource SectionTitleStyle}" FontSize="15"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="160"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Secure Boot" Foreground="{StaticResource DimTextBrush}"/>
+                            <TextBlock Grid.Column="1" x:Name="SecBootText"/>
+                            <TextBlock Grid.Column="0" Text="TPM" Foreground="{StaticResource DimTextBrush}" Margin="0,6,0,0"/>
+                            <TextBlock Grid.Column="1" x:Name="TpmText" Margin="0,6,0,0"/>
+                            <TextBlock Grid.Column="0" Text="BitLocker" Foreground="{StaticResource DimTextBrush}" Margin="0,6,0,0"/>
+                            <TextBlock Grid.Column="1" x:Name="BitlockerText" Margin="0,6,0,0"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Audit findings -->
+                <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="16,12" Margin="0,12,0,0">
+                    <StackPanel>
+                        <TextBlock Text="Audit findings" Style="{StaticResource SectionTitleStyle}" FontSize="15"/>
+                        <ListBox x:Name="FindingsBox" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}"
+                                 Foreground="{StaticResource WarnBrush}" Margin="0,8,0,0" MaxHeight="240"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

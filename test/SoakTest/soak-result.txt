@@ -1,0 +1,11 @@
+evidence:  1000
+events:    501
+db bytes:  2,654,208
+wal bytes: 4,865,752
+db size:   2.5 MB
+
+Expected:
+evidence ≤ 1600 (cap 1000, recent-post-cleaner growth)
+events   ≤  750 (cap 500, recent-post-cleaner growth)
+vacuum applied when waste ≥ 50%
+db ≪ 200 MB (was 52 GB)

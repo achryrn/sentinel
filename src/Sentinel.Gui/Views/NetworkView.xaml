@@ -1,0 +1,38 @@
+<UserControl x:Class="Sentinel.Gui.Views.NetworkView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:Sentinel.Gui">
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0">
+            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="Network"/>
+            <TextBlock Text="Active TCP/UDP connections and listeners, mapped to owning processes."
+                       Foreground="{StaticResource DimTextBrush}" Margin="0,0,0,12"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
+            <Button x:Name="ScanBtn" Content="Refresh connections" Click="ScanBtn_Click"/>
+            <CheckBox x:Name="HideLoopback" Content="Hide loopback" IsChecked="True" VerticalAlignment="Center" Margin="12,0,0,0" Checked="FilterChanged" Unchecked="FilterChanged"/>
+            <TextBlock x:Name="CountText" Foreground="{StaticResource DimTextBrush}" VerticalAlignment="Center" Margin="12,0,0,0"/>
+        </StackPanel>
+
+        <DataGrid Grid.Row="2" x:Name="NetGrid" IsReadOnly="True">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Proto" Binding="{Binding Protocol}" Width="60"/>
+                <DataGridTextColumn Header="Local" Binding="{Binding LocalAddress}" Width="130"/>
+                <DataGridTextColumn Header="Port" Binding="{Binding LocalPort}" Width="60"/>
+                <DataGridTextColumn Header="Remote" Binding="{Binding RemoteAddress}" Width="130"/>
+                <DataGridTextColumn Header="Port" Binding="{Binding RemotePort}" Width="60"/>
+                <DataGridTextColumn Header="State" Binding="{Binding State}" Width="90"/>
+                <DataGridTextColumn Header="Process" Binding="{Binding ProcessName}" Width="160"/>
+                <DataGridTextColumn Header="PID" Binding="{Binding OwningPid}" Width="60"/>
+                <DataGridTextColumn Header="Path" Binding="{Binding ProcessPath, Converter={StaticResource TruncateConverter}}" Width="*"/>
+            </DataGrid.Columns>
+        </DataGrid>
+    </Grid>
+</UserControl>

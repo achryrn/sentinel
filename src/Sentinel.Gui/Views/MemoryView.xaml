@@ -1,0 +1,52 @@
+<UserControl x:Class="Sentinel.Gui.Views.MemoryView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:Sentinel.Gui">
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0">
+            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="Memory"/>
+            <TextBlock Text="Read-only memory analysis: executable private regions, suspicious thread starts, guard pages. No process memory is modified."
+                       Foreground="{StaticResource DimTextBrush}" Margin="0,0,0,12"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
+            <Button x:Name="ScanBtn" Content="Analyze all processes" Click="Scan_Click"/>
+            <TextBox x:Name="PidBox" Width="90" VerticalContentAlignment="Center" Margin="8,0,0,0"/>
+            <Button x:Name="ScanOneBtn" Content="Analyze PID" Click="ScanOne_Click"/>
+            <TextBlock x:Name="CountText" Foreground="{StaticResource DimTextBrush}" VerticalAlignment="Center" Margin="12,0,0,0"/>
+        </StackPanel>
+
+        <DataGrid Grid.Row="2" x:Name="MemGrid" IsReadOnly="True" SelectionChanged="MemGrid_SelectionChanged">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="PID" Binding="{Binding Pid}" Width="60"/>
+                <DataGridTextColumn Header="Process" Binding="{Binding ProcessName}" Width="180"/>
+                <DataGridTextColumn Header="Regions" Binding="{Binding RegionCount}" Width="70"/>
+                <DataGridTextColumn Header="Suspicious" Binding="{Binding SuspiciousRegions.Count}" Width="80"/>
+                <DataGridTextColumn Header="Threads" Binding="{Binding SuspiciousThreads.Count}" Width="80"/>
+                <DataGridTextColumn Header="Priv. exec" Binding="{Binding TotalPrivateExecutableBytes, Converter={StaticResource BytesConverter}}" Width="90"/>
+                <DataGridTextColumn Header="Access" Binding="{Binding AccessDenied}" Width="70"/>
+                <DataGridTextColumn Header="Error" Binding="{Binding Error}" Width="*"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <TextBlock Grid.Row="3" Text="Suspicious regions" Style="{StaticResource SectionTitleStyle}" FontSize="14" Margin="0,16,0,4"/>
+        <DataGrid Grid.Row="4" x:Name="RegionGrid" IsReadOnly="True">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Base" Binding="{Binding BaseAddress, StringFormat=X}" Width="110"/>
+                <DataGridTextColumn Header="Size" Binding="{Binding RegionSize, Converter={StaticResource BytesConverter}}" Width="90"/>
+                <DataGridTextColumn Header="Protect" Binding="{Binding Protect}" Width="80"/>
+                <DataGridTextColumn Header="Type" Binding="{Binding Type}" Width="80"/>
+                <DataGridTextColumn Header="Entropy" Binding="{Binding Entropy, StringFormat={}{0:0.00}}" Width="70"/>
+                <DataGridTextColumn Header="Image" Binding="{Binding MappedImagePath, Converter={StaticResource TruncateConverter}}" Width="*"/>
+            </DataGrid.Columns>
+        </DataGrid>
+    </Grid>
+</UserControl>
