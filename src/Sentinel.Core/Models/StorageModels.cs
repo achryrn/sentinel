@@ -76,3 +76,14 @@ public sealed record StoredFinding
     public DateTime? LastSeenUtc { get; init; }
     public int OccurrenceCount { get; init; }
 }
+
+/// <summary>One known-bad SHA-256 entry.</summary>
+public sealed record BlacklistEntry
+{
+    public required string Sha256 { get; init; }
+    public required string Verdict { get; init; }
+    public required string Label { get; init; }
+    public string? Category { get; init; }
+    public string? AddedBy { get; init; }
+    public DateTime? AddedAtUtc { get; init; }
+}

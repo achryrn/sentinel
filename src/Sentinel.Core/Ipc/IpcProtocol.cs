@@ -40,6 +40,10 @@ public enum IpcCommand
     GetScanJobs,
     GetRealtimeEvents,
     DumpProcessMemory,
+    GetBlacklist,
+    AddBlacklist,
+    RemoveBlacklist,
+    ReloadRules,
 }
 
 /// <summary>A message on the wire: JSON line, UTF-8.</summary>

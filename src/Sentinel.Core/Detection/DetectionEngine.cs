@@ -189,6 +189,17 @@ public sealed class DetectionEngine
             tactics: [Tactics.InitialAccess]);
     }
 
+    public static Evidence? FileKnownMalwareHash(FileReport f)
+    {
+        if (string.IsNullOrEmpty(f.KnownMalwareLabel))
+        {
+            return null;
+        }
+        return Ev("file", f.Path, "known-malware-hash", Severity.Critical, 0.98,
+            $"SHA-256 of '{f.FileName}' matches the known-bad blacklist: {f.KnownMalwareLabel}.", f,
+            tactics: [Tactics.Execution, Tactics.Impact]);
+    }
+
     public static Evidence? FileHiddenSystem(FileReport f)
     {
         if (!f.IsHiddenOrSystem)
@@ -461,6 +472,36 @@ public sealed class DetectionEngine
             "The Guest account is enabled.", a);
     }
 
+    // ---------- process view (rootkit hiding) evidence ----------
+
+    /// <summary>
+    /// Evidence for processes visible in exactly one enumeration surface.
+    /// PIDs only in the native (Toolhelp) view but absent from WMI suggest
+    /// userland process hiding; the reverse is usually a race, reported at
+    /// lower severity. No verdict by itself — correlated like all evidence.
+    /// </summary>
+    public static IReadOnlyList<Evidence> NormalizeProcessViews(ProcessViewDiscrepancy d)
+    {
+        var list = new List<Evidence>(2);
+        if (!d.WmiSucceeded || !d.ToolhelpSucceeded)
+        {
+            return list;
+        }
+        if (d.OnlyToolhelpPids.Count > 0)
+        {
+            string pids = string.Join(", ", d.OnlyToolhelpPids.Take(20));
+            list.Add(Ev("process", "process-view", "process-hidden-from-wmi", Severity.High, 0.7,
+                $"{d.OnlyToolhelpPids.Count} process(es) visible in the native process view but not via WMI — possible process hiding (rootkit artifact). PIDs: {pids}", d,
+                tactics: [Tactics.DefenseEvasion, Tactics.Execution]));
+        }
+        if (d.OnlyWmiPids.Count > 0)
+        {
+            list.Add(Ev("process", "process-view", "process-only-in-wmi", Severity.Low, 0.5,
+                $"{d.OnlyWmiPids.Count} process(es) visible via WMI but not in the native view (usually a listing race).", d));
+        }
+        return list;
+    }
+
     // ---------- normalization ----------
 
     /// <summary>
@@ -487,6 +528,7 @@ public sealed class DetectionEngine
             Add(list, FileNoNx(file));
             Add(list, FileTimestampAnomaly(file));
             Add(list, FileFromInternet(file));
+            Add(list, FileKnownMalwareHash(file));
             Add(list, FileHiddenSystem(file));
             Add(list, FileSuspiciousLocation(file));
         }

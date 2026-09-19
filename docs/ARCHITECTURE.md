@@ -69,19 +69,22 @@ Every component is a library class in `Sentinel.Core`; the service, CLI, and GUI
 
 DB at `%ProgramData%\Sentinel\sentinel.db` (service-managed; GUI never opens it directly).
 
-| Table | Purpose |
-|---|---|
-| `findings` | correlated findings + status |
-| `evidence` | evidence items (bounded — trimmed to ~100k rows) |
-| `scan_jobs` | scan history |
-| `hash_cache` | path→(size, lastWrite, sha256, sha1, md5, firstSeen, verdict) |
-| `signer_cache` | signer name → trust state, observed count |
-| `exclusions` | auditable exclusions |
-| `quarantine` | quarantine records (id, original path, hashes, times, reason, status) |
-| `settings` | service config (kv) |
-| `events` | persisted event log tail |
+| Table | Purpose | Bound |
+|---|---|---|
+| `findings` | correlated findings + status | cap 200k + 30/180-day retention by status; **one row per entity** (deterministic id) |
+| `evidence` | evidence items | cap 100k rows (trim oldest) |
+| `scan_jobs` | scan history | cap 2k rows |
+| `hash_cache` | path→(size, lastWrite, sha256, sha1, md5, firstSeen, verdict) | cap 2M rows; get-before-compute on size+LastWrite |
+| `hash_blacklist` | known-bad SHA-256 (seeded with EICAR) | small |
+| `signer_cache` | signer name → trust state, observed count | — |
+| `exclusions` | auditable exclusions | — |
+| `quarantine` | quarantine records (id, original path, hashes, times, reason, status) | — |
+| `settings` | service config (kv) | — |
+| `events` | persisted event log tail | cap 5k rows |
 
-Concurrency: single writer connection owned by the service; readers use short-lived connections. WAL mode.
+Concurrency: one writer connection owned by the service; readers use short-lived connections. **WAL mode + single-writer lock**: batched inserts (`InsertBatchAsync`, temp-table staged, INSERT OR REPLACE on the dedupe key) and the periodic cleaner are serialized — the batch transaction and the cleaner can never interleave. VACUUM runs only when the free-space ratio is ≥ 50%. The maintenance loop also trims dump files (14 days / 20 newest).
+
+**Why this is bounded** — the historical 52 GB failure had two compounding causes: (1) every evidence item became a new GUID finding (row flood), and (2) the realtime monitor watched its own DB/WAL directory, so each WAL write generated an event that generated more writes. Fixes: deterministic finding IDs + converged upsert (re-scans update one row), finding gating (weak single signals stay evidence), curated watch roots, batch writes, caps + retention, and the watch-root self-exclusion.
 
 ---
 
@@ -93,7 +96,7 @@ Concurrency: single writer connection owned by the service; readers use short-li
 - `iphlpapi`: `GetExtendedTcpTable`, `GetExtendedUdpTable`, `GetIfTable2`, `GetAdaptersAddresses`.
 - `dbghelp`: `MiniDumpWriteDump`.
 - `amsi`: `AmsiInitialize`, `AmsiScanBuffer`, `AmsiScanString`, `AmsiOpenSession`, `AmsiUninitialize` (late-bound via LoadLibrary to degrade gracefully).
-- `advapi32/security`: `GetTokenInformation`, `LookupAccountSidW`, `ConvertSidToStringSidW`, `OpenProcessToken`, `GetTokenInformation` (integrity), `OpenSCManager`/`QueryServiceConfig2W` (elevated service), `GetUserNameW`.
+- `advapi32/security`: `GetTokenInformation`, `LookupAccountSidW`, `ConvertSidToStringSidW`, `OpenProcessToken`, `GetTokenInformation` (integrity), `OpenSCManager`/`QueryServiceConfig2W` (elevated service), `GetUserNameW`, `AdjustTokenPrivileges`/`LookupPrivilegeValueW` (`Privileges.Enable` — SeDebug/SeBackup/SeRestore/SeTakeOwnership/SeSecurity).
 - COM interop (embedded interfaces, no external libs): `INetFwPolicy2` (firewall read), `IShellLinkW` (LNK targets), `ITaskScheduler` via `schtasks` fallback.
 
 All P/Invoke marshaling is explicit; buffers are sized by probing calls (`ERROR_INSUFFICIENT_BUFFER` pattern).
@@ -128,19 +131,32 @@ All P/Invoke marshaling is explicit; buffers are sized by probing calls (`ERROR_
 Scanner output (FileReport, ProcessInfo, ...)
         │ 1. normalize → Evidence[]
         ▼
-DetectionEngine.Evaluate(evidence)          — per-evidence rules
+DetectionEngine (40+ evidence rules: PE structure, signature, entropy, memory,
+                  network, persistence, system, blacklist, process-view)
+Content/behavior engines: YARA-lite rule engine, AMSI provider query,
+                  script analyzer, process-chain analyzer
         │ 2. emit individual Evidence (severity, confidence, explanation)
         ▼
 CorrelationEngine.Correlate(evidence)       — entity keys + time windows (default 60 s)
-        │ 3. composite Evidence chains
+        │ 3. gate: finding only when ≥2 signals OR ≥Medium OR conf ≥0.75;
+        │    deterministic id = fnd- + SHA256(entityKey) → converge per entity
         ▼
 RiskAssessor.Assess(evidenceSet)            — weighted aggregation per entity
         │ 4. Finding { reasons[], confidence, severity, actions }
         ▼
-EventStore + SQLite + live stream → GUI/CLI
+EventStore + SQLite (batched ≤10k) + live stream → GUI/CLI
 ```
 
 Scoring model: each reason contributes (severity × confidence × weight) with explicit capping; the Finding displays the full reason list — **never a bare number**.
+
+### Content & behavioral engines
+
+- **YARA-lite rule engine** (`RuleEngine`) — parses a YARA subset: `meta`, `strings` (ascii/wide/nocase/hex-with-`?`), `condition` (`and`/`or`/`not`, `N of`, `any of`). Default pack of 10 rules embedded; user rules loaded from `%ProgramData%\Sentinel\rules\*.rule` (`rules --reload`). Non-matching constructs (regex strings, modules) are skipped without failing the rest of the pack — one bad rule never takes the engine down.
+- **AMSI scanner** (`AmsiScanner`) — `AmsiInitialize`/`AmsiScanBuffer` against amsi.dll; result ≥ 0x4000 (blocked-by-admin) is treated as *Detected*. Read-only: content is scanned through AMSI, nothing is hooked. Auto-detects availability; unavailable → evidence source skipped.
+- **Script analyzer** (`ScriptAnalyzer`) — text heuristics for script formats (PS1/PSM1/BAT/CMD/VBS/VBE/JS/JSE/HTA/WSF/WSH/...): encoded commands, download cradles, execute chains, char-code/base64/split-join obfuscation, persistence hooks, credential access. Latin-1/UTF-16/UTF-8 aware; 4 MiB cap; entropy check for compressed stage loaders.
+- **Process-chain analyzer** (`ProcessChainAnalyzer`) — consumes realtime process-created events (name, command line, parent, executable path), keeps parent→child relations in a bounded 1024-PID ring, and flags chains: script host → network child, Office → PowerShell, hidden launcher, credential tool, schtasks persistence. A rule matched *on the chain*, not on any single process, is High/Critical.
+- **Process-view discrepancy** — a realtime reconciliation of the native (Toolhelp) PID set vs WMI `Win32_Process`; PIDs in the native view only → possible process hiding; WMI-only → usually a race (Low). Fed into the same correlation engine.
+- **Hash blacklist** (`hash_blacklist`, seeded with the EICAR SHA-256) — every scanned file is looked up before the expensive hashing; a hit produces `known-malware-hash` (Critical 0.98) plus a `KNOWN MALWARE HASH` note on the report; `blacklist --add/--remove` manage entries at runtime.
 
 ---
 
@@ -173,6 +189,7 @@ Scoring model: each reason contributes (severity × confidence × weight) with e
 5. Quarantine default: user-confirmed; restore verifies hashes both ways.
 6. All exclusions visible and removable; no silent exclusions.
 7. If AMSI itself is unavailable → feature reported unavailable, scan continues.
+8. Privilege expansion is defensive and honest: the service requests the minimum set needed to *inspect* the whole machine (`SeDebug`, `SeBackup`, `SeRestore`, `SeTakeOwnership`, `SeSecurity`) via `AdjustTokenPrivileges`, and logs exactly which privileges were granted (INFO when all five, WARNING otherwise). A privilege is used only to open reads with `FILE_FLAG_BACKUP_SEMANTICS`/restore semantics; nothing is disabled and nothing is retained after the read.
 
 ---
 

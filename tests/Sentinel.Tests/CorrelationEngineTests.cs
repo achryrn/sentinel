@@ -69,14 +69,48 @@ public class CorrelationEngineTests
     {
         var engine = new CorrelationEngine();
         var now = DateTime.UtcNow;
-        var e1 = Ev(@"C:\evil\evil.exe", "unsigned-executable", Severity.Low, 0.5, "Executable 'evil.exe' is unsigned.", now);
-        var e2 = Ev(@"C:\evil\evil.exe", "unsigned-executable", Severity.Low, 0.5, "Executable 'evil.exe' is unsigned.", now.AddSeconds(1));
+        var e1 = Ev(@"C:\evil\evil.exe", "untrusted-signer", Severity.Medium, 0.6, "Signed by untrusted signer.", now);
+        var e2 = Ev(@"C:\evil\evil.exe", "untrusted-signer", Severity.Medium, 0.6, "Signed by untrusted signer.", now.AddSeconds(1));
 
         var findings = engine.Correlate([e1, e2]);
 
         var f = Assert.Single(findings);
         Assert.Single(f.EvidenceIds); // distinct events only
         Assert.Equal(2, f.OccurrenceCount); // but occurrence count reflects all
+    }
+
+    [Fact]
+    public void SingleWeakSignal_StaysEvidence_NoFinding()
+    {
+        // Pre-hardening, ANY evidence produced a GUID finding — the source of
+        // unbounded DB growth. A single low-severity signal is evidence only.
+        // A fresh engine per call: the correlation window is deliberately stateful.
+        var now = DateTime.UtcNow;
+        var e1 = Ev(@"C:\app\tool.exe", "unsigned-executable", Severity.Low, 0.5, "Executable 'tool.exe' is unsigned.", now);
+        var e2 = Ev(@"C:\app\tool.exe", "motw-internet", Severity.Low, 0.6, "Downloaded from internet.", now);
+
+        Assert.Empty(new CorrelationEngine().Correlate([e1]));
+        Assert.Empty(new CorrelationEngine().Correlate([e2]));
+
+        // But two weak signals together do promote to a finding.
+        var both = new CorrelationEngine().Correlate([e1, e2]);
+        var f = Assert.Single(both);
+        Assert.Equal(2, f.EvidenceIds.Count);
+    }
+
+    [Fact]
+    public void FindingId_IsStablePerEntity()
+    {
+        var engine = new CorrelationEngine();
+        var now = DateTime.UtcNow;
+        var e = Ev(@"C:\evil\evil.exe", "invalid-signature", Severity.High, 0.8, "Bad signature.", now);
+
+        var f1 = Assert.Single(engine.Correlate([e]));
+        var f2 = Assert.Single(engine.Correlate([e]));
+
+        Assert.Equal(f1.Id, f2.Id);
+        Assert.StartsWith("fnd-", f1.Id);
+        Assert.Equal(32 + 4, f1.Id.Length); // "fnd-" + 32 hex chars
     }
 
     [Fact]
@@ -113,7 +147,7 @@ public class CorrelationEngineTests
     {
         var engine = new CorrelationEngine(TimeSpan.FromMinutes(5));
         var now = DateTime.UtcNow;
-        var e1 = Ev(@"C:\evil\evil.exe", "unsigned-executable", Severity.Low, 0.5, "Unsigned.", now);
+        var e1 = Ev(@"C:\evil\evil.exe", "untrusted-signer", Severity.Medium, 0.6, "Untrusted signer.", now);
         var e2 = Ev(@"C:\evil\evil.exe", "rwx-section", Severity.Medium, 0.6, "RWX.", now.AddSeconds(10));
 
         var first = engine.Correlate([e1]);
@@ -128,7 +162,7 @@ public class CorrelationEngineTests
     public void TacticExtraction_FromExplanation()
     {
         var engine = new CorrelationEngine();
-        var e = Ev(@"C:\evil\evil.exe", "startup-folder-item", Severity.Low, 0.5,
+        var e = Ev(@"C:\evil\evil.exe", "startup-folder-item", Severity.Medium, 0.6,
             "Item 'evil' in the startup folder — persistence mechanism.", DateTime.UtcNow);
 
         var findings = engine.Correlate([e]);
@@ -161,7 +195,7 @@ public class CorrelationEngineTests
         var med = new CorrelationEngine().Correlate([Ev("b", "untrusted-signer", Severity.Medium, 0.6, "Untrusted.", now)]);
         Assert.Contains("Review the entity", med[0].RecommendedAction);
 
-        var low = new CorrelationEngine().Correlate([Ev("c", "unsigned-executable", Severity.Low, 0.5, "Unsigned.", now)]);
+        var low = new CorrelationEngine().Correlate([Ev("c", "unsigned-executable", Severity.Low, 0.8, "Unsigned but high-confidence.", now)]);
         Assert.Contains("Informational", low[0].RecommendedAction);
     }
 
@@ -170,8 +204,8 @@ public class CorrelationEngineTests
     {
         var engine = new CorrelationEngine();
         var now = DateTime.UtcNow;
-        var e1 = Ev(@"C:\a\a.exe", "unsigned-executable", Severity.Low, 0.5, "Unsigned.", now);
-        var e2 = Ev(@"C:\b\b.exe", "unsigned-executable", Severity.Low, 0.5, "Unsigned.", now);
+        var e1 = Ev(@"C:\a\a.exe", "untrusted-signer", Severity.Medium, 0.6, "Untrusted.", now);
+        var e2 = Ev(@"C:\b\b.exe", "untrusted-signer", Severity.Medium, 0.6, "Untrusted.", now);
 
         var findings = engine.Correlate([e1, e2]);
 

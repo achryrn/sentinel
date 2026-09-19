@@ -91,15 +91,25 @@ Scanner  Scanner  Scanner   Scanner       Scanner
 
 **Database:** SQLite at `%ProgramData%\Sentinel\sentinel.db` (service-managed).
 
-| Table | Purpose |
-|---|---|
-| `findings` | correlated findings + status |
-| `evidence` | evidence items (bounded, trimmed to ~100k rows) |
-| `scan_jobs` | scan history |
-| `hash_cache` | path → (size, lastWrite, sha256, sha1, md5, firstSeen, verdict) |
-| `signer_cache` | signer name → trust state, observed count |
-| `exclusions` | auditable exclusions |
-| `quarantine` | quarantine records |
+| Table | Purpose | Bound |
+|---|---|---|
+| `findings` | correlated findings + status | cap 200k + 30/180-day status retention; **1 row per entity** (deterministic id) |
+| `evidence` | evidence items | cap 100k rows |
+| `events` | service/realtime event log | cap 5k rows |
+| `scan_jobs` | scan history | cap 2k rows |
+| `hash_cache` | path → (size, lastWrite, sha256, sha1, md5, firstSeen, verdict) | cap 2M rows; get-before-compute |
+| `hash_blacklist` | known-bad SHA-256 (seeded with EICAR) | small |
+| `signer_cache` | signer name → trust state, observed count | — |
+| `exclusions` | auditable exclusions | — |
+| `quarantine` | quarantine records | — |
+
+**The 52 GB incident, root cause and fix (this hardening round):**
+
+1. *Every evidence item created a new GUID finding.* A single file could produce dozens of rows per scan, and each scan multiplied the table. Fixed with deterministic finding IDs (`fnd-` + SHA-256 of the entity key), a finding gate (≥ 2 signals / medium+ severity / conf ≥ 0.75), and `UpsertFindingConverged` (one row per entity even if the file is found again).
+2. *The realtime monitor watched its own database/WAL directory.* Every WAL write changed the directory → an event → more evidence → more writes → a feedback loop. Fixed by curating watch roots (startup locations only), evidence-kind filtering, batched writes, and caps with retention.
+3. *Unbounded caches and logs.* `hash_cache`, `events`, `scan_jobs`, and `findings` now all have explicit caps plus an age-based retention pass; VACUUM runs only at ≥ 50% waste; dumps are trimmed.
+
+**Verified:** the `test/SoakTest` harness storms the store for ~2 minutes then settles — the database stays at **~2.6 MB** (bounded), and the EICAR E2E run keeps `sentinel.db` at **~0.35 MB** after repeated rescans plus live realtime monitoring.
 
 ---
 
@@ -151,36 +161,52 @@ Read-only security posture audit:
 
 ## 12. Detection Engine (Rules)
 
-Every rule is a pure function `(scanner output) → Evidence?`. Rules never produce verdicts alone. 30+ rules across six sources (see §6–§11). Each evidence carries severity, confidence, explanation, and details; the engine normalizes scanner outputs into evidence in one pass.
+Every rule is a pure function `(scanner output) → Evidence?`. Rules never produce verdicts alone. 40+ structural rules across six sources (see §6–§11) plus four content/behavioral engines (new in this hardening round):
+
+- **YARA-lite rule engine** (`RuleEngine`) — parses a YARA subset (meta/strings/condition; ascii, wide, nocase, hex-with-`?`; `and`/`or`/`not`, `N of`, `any of`). Default pack of 10 rules embedded; user rules auto-load from `%ProgramData%\Sentinel\rules\*.rule`. Robustness: unparseable constructs (regex strings, unknown sections) skip that rule only — the pack survives. Byte matching limits at 8 MiB per file.
+- **AMSI scanner** (`AmsiScanner`) — P/Invoke against amsi.dll (`AmsiInitialize`/`AmsiScanBuffer`); verdict ≥ 0x4000 (blocked by admin) counts as *Detected* evidence. Read-only provider query, not a hook. Availability is probed once and reported (unavailable → silently skipped).
+- **Script analyzer** (`ScriptAnalyzer`) — heuristics over script/office-ish text formats: encoded commands (`-enc`/`FromBase64String`), download cradles (`IEX(New-Object Net.WebClient).DownloadString`), execute chains, char-code assembly (`chr(`-heavy), base64/split-join obfuscation, persistence hooks (Run keys, schtasks), credential access (mimikatz, `net user`, `Get-Credential`). Latin-1/UTF-16/UTF-8 decoding; 4 MiB cap; extension gate widened to include small `.txt`/`.com`/`.scr` (EICAR tests and disguised payloads).
+- **Process-chain analyzer** (`ProcessChainAnalyzer`) — realtime parent→child chain rules with a bounded 1024-PID ring: encoded launch, download cradle → network child, hidden launcher, credential tool (Critical), script-host child, Office→PowerShell child, schtasks persistence. Fires on the *chain*, not a single process.
+- **Process-view discrepancy** — Toolhelp (native) vs WMI PID comparison: native-only PIDs → High `process-hidden-from-wmi` (rootkit artifact candidate); WMI-only → Low race note. Runs on a bounded poll inside the realtime loop.
+- **SHA-256 blacklist** — `hash_blacklist` table, seeded with the EICAR hash; every scanned file is checked before hashing (hash cache miss path), producing `known-malware-hash` (Critical 0.98) evidence and a report note. Mutable at runtime (`blacklist --add/--remove`).
+
+EICAR E2E proof (this machine): scanning `test/eicar-test.txt` produced a **Critical finding (risk 100.0, conf 1.00)** with three independent evidence sources — `rule-eicar_test_file`, `amsi-detected`, `known-malware-hash`. Re-scans converge to a single finding row.
 
 ## 13. Correlation Engine & Risk Scoring
 
 - **Correlation:** evidence is grouped by entity (file path, PID, connection key, persistence key, system) within a 60-second window; distinct signals per entity are combined into a `Finding` with max severity, confidence `min(1, 0.3 + Σconf·0.35)`, deduplicated reasons, MITRE tactic tags, and a recommended action (immediate review / review / informational).
+- **Gating (storage fix):** a finding is created only when the entity has ≥ 2 distinct signals, or max severity ≥ Medium, or max confidence ≥ 0.75. A single weak signal (unsigned exe, MOTW, no-ASLR) stays *evidence* — it is not a verdict and no longer floods the findings table.
+- **Deterministic finding IDs:** `fnd-` + SHA-256(`sentinel-finding:` + entity key). One row per entity even across scans, sessions, and service restarts; `UpsertFindingConverged` preserves user status (New/Allowed/Quarantined) and accumulates occurrence counts. This is the core de-duplication: the same file found 100 times creates 1 row, not 100.
 - **Risk scoring:** `RiskAssessor` computes a weighted score from evidence severities and event weights; findings are stored with `risk_score` and listed highest-first.
 
 ## 14. IPC & Service Host
 
 - **Protocol:** named pipe `\\.\pipe\sentinel\ipc`, JSON-lines, camelCase, case-insensitive, `IpAddressConverter` for IP serialization.
-- **Commands:** Ping, Status, ScanFile/Folder/Quick/Full/Process/Network/Persistence/Memory, AuditSystem, CancelScan, GetFindings, GetEvidence, UpdateFindingStatus, GetExclusions, Add/RemoveExclusion, GetQuarantine, QuarantineFile, Restore/DeleteQuarantine, GetEvents, GetScanJobs, GetRealtimeEvents, DumpProcessMemory.
+- **Commands:** Ping, Status, ScanFile/Folder/Quick/Full/Process/Network/Persistence/Memory, AuditSystem, CancelScan, GetFindings, GetEvidence, UpdateFindingStatus, GetExclusions, Add/RemoveExclusion, GetQuarantine, QuarantineFile, Restore/DeleteQuarantine, GetEvents, GetScanJobs, GetRealtimeEvents, DumpProcessMemory. **GetBlacklist, AddBlacklist, RemoveBlacklist, ReloadRules**.
 - **Events:** `scan-progress`, `file-report`, `realtime-event` broadcast to connected clients; GUI re-raises on the UI thread.
 - **Service modes:** console (`--run`) for development, Windows service (`--install`/`--uninstall`) for production.
 
 **GUI (WPF, 12 views):** Dashboard (live posture + recent findings), Scan, Threats (findings), Processes, Network, Memory, Persistence, Files, System (audit), Events, Quarantine, Settings (exclusions). All views refresh via IPC; the dashboard shows Defender/firewall/UAC posture from a fresh audit.
 
-**CLI (14 commands):** `status`, `scan <path|--quick|--full>`, `findings`, `evidence <entity>`, `events`, `quarantine [--list|--restore|--delete]`, `exclusions [--add|--remove]`, `processes`, `network`, `persistence`, `memory [pid]`, `audit`, `dump <pid>`, `help`.
+**CLI (16 commands):** `status`, `scan <path|--quick|--full>`, `findings`, `evidence <entity>`, `events`, `quarantine [--list|--restore|--delete]`, `exclusions [--add|--remove]`, `processes`, `network`, `persistence`, `memory [pid]`, `audit`, `dump <pid>`, `rules [--reload]`, `blacklist [--add|--remove]`, `help`. `status` reports enabled privileges, rule count, AMSI availability, and blacklist size.
 
 ## 15. Testing & E2E Verification
 
-**Unit/integration tests: 123/123 passing** (`dotnet test`):
+**Unit/integration tests: 154/154 passing** (`dotnet test`):
 
 | Suite | Tests | Coverage |
 |---|---|---|
 | `DetectionEngineTests` | 52 | every rule, normalization, edge cases |
 | `PeParserTests` | 21 | PE parsing, malformed files, sections, imports, TLS, overlay |
+| `RuleEngineTests` | 10 | YARA-lite parse/eval (EICAR, wide/nocase/hex, conditions, malformed-skip) |
+| `ScriptAnalyzerTests` | 4 | encoded/db/obfuscation/persistence flagging, benign silence |
+| `ProcessChainAnalyzerTests` | 6 | chain rules, ring bound, benign silence |
+| `CorrelationEngineTests` | 17 | grouping, gating, deterministic IDs, confidence, tactics, risk scoring |
 | `SentinelStoreTests` | 17 | SQLite CRUD, findings, evidence, exclusions, quarantine |
-| `CorrelationEngineTests` | 14 | grouping, confidence, tactics, risk scoring |
+| `StorageRetentionTests` | 4 | caps, retention, converged upsert preserves user status |
 | `EntropyTests` | 11 | Shannon entropy, block entropy |
 | `HashServiceTests` | 8 | SHA256/SHA1/MD5, caching |
+
 
 **E2E verification (live service, real machine):**
 
@@ -196,6 +222,10 @@ Every rule is a pure function `(scanner output) → Evidence?`. Rules never prod
 | Quarantine/exclusions/evidence | ✅ list/add/remove/evidence-by-entity |
 | GUI | ✅ launches, connects via IPC, all 12 views load |
 | Build | ✅ 0 errors |
+| Storage soak | ✅ 2-minute event storm + 60 s settle → DB stays **2.6 MB** (bounded; the historical failure was 52 GB) |
+| EICAR (new engines) | ✅ `scan test/eicar-test.txt` → **Critical finding (conf 1.00)** from 3 engines: `rule-eicar_test_file`, `amsi-detected`, `known-malware-hash` |
+| Finding convergence | ✅ 3 re-scans of the same file produce **1 finding row** (deterministic id + converged upsert) |
+| Batch-writer/cleaner race | ✅ soak exposed a pending-transaction race (`InsertBatchAsync` vs cleaner); serialized under the single-writer lock and re-verified |
 
 **Bugs found & fixed during E2E (all verified):**
 
@@ -212,16 +242,17 @@ Every rule is a pure function `(scanner output) → Evidence?`. Rules never prod
 
 **Known limitations (honest):**
 - No kernel driver — kernel-mode integrity, early-boot activity, PPL-protected process memory, and rootkit-hidden artifacts are out of scope.
-- No AMSI integration code — AMSI is documented as the future integration point for real-time scanning of script/office content.
+- AMSI is **provider-queried** (content pushed through amsi.dll with one call per buffer) but **not hooked** — realtime script/office interception remains future work; as a query it is one evidence source, not a stream.
+- Privileged introspection needs an elevated service; in console mode an admin shell is required to enable SeDebug/SeBackup/SeRestore/SeTakeOwnership/SeSecurity. Partial grants are logged and degrade gracefully.
 - No auto-remediation — quarantine/terminate/delete are explicit user actions only.
 - WMI/COM availability varies by Windows SKU; collectors degrade gracefully (documented in `SystemAuditor`).
 - Full scans are I/O bound (SHA-256 dominates); no incremental scan resume.
 - Findings are signals, not verdicts — false positives are possible and the UI is designed for human review.
 
 **Future work:**
-- AMSI integration for script/office scanning (documented in `docs/RESEARCH.md`).
-- ETW-based telemetry (Sysmon-style event catalog).
+- AMSI hooking / realtime script+office interception (the AMSI query path exists; the hook is deliberately not part of this read-only build).
 - Kernel-mode integrity checks (requires a driver — explicitly out of scope for this build).
+- ETW-based telemetry (Sysmon-style event catalog).
 - Cloud hash lookup (VirusTotal-style) with privacy controls.
 - Scheduled scans and alerting (email/webhook).
 - Multi-machine fleet view.

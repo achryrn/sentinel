@@ -2,6 +2,7 @@ using Sentinel.Core.Hashing;
 using Sentinel.Core.Models;
 using Sentinel.Core.Pe;
 using Sentinel.Core.Signing;
+using Sentinel.Core.Storage;
 
 namespace Sentinel.Core.Scanning;
 
@@ -49,6 +50,13 @@ public sealed class FileScanOptions
 
     /// <summary>Maximum files to report (safety cap).</summary>
     public long MaxFiles { get; init; } = 500_000;
+
+    /// <summary>
+    /// Optional store used for the path+size+lastWrite hash cache. When set,
+    /// repeat scans of unchanged files reuse cached hashes (huge speedup for
+    /// full scans); cache rows are bounded by the store cleaner.
+    /// </summary>
+    public SentinelStore? Store { get; init; }
 }
 
 /// <summary>
@@ -228,7 +236,14 @@ public sealed class FileScanner
 
         bool isPeCandidate = IsLikelyPe(fi.Name);
 
-        if (fi.Length <= _options.MaxHashSize)
+        // Hash cache: skip re-hashing when size + last-write match a previous scan.
+        var cached = _options.Store?.GetHashCache(path, fi.Length, fi.LastWriteTimeUtc);
+        if (cached is not null)
+        {
+            (sha256, sha1, md5) = cached.Value;
+        }
+
+        if (sha256 is null && fi.Length <= _options.MaxHashSize)
         {
             try
             {
@@ -236,6 +251,7 @@ public sealed class FileScanner
                 sha256 = hash.Sha256;
                 sha1 = hash.Sha1;
                 md5 = hash.Md5;
+                _options.Store?.SetHashCache(path, fi.Length, fi.LastWriteTimeUtc, sha256, sha1, md5);
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or OperationCanceledException)
             {
@@ -245,9 +261,21 @@ public sealed class FileScanner
                 }
             }
         }
-        else
+        else if (sha256 is null)
         {
             notes.Add($"File larger than hash cap ({_options.MaxHashSize / (1024 * 1024)} MiB) — hash skipped.");
+        }
+
+        // Known-bad hash blacklist check (when a store is attached and a hash exists).
+        string? knownMalwareLabel = null;
+        if (sha256 is not null && _options.Store is not null)
+        {
+            var bl = _options.Store.LookupBlacklist(sha256);
+            if (bl is not null)
+            {
+                knownMalwareLabel = bl.Label;
+                notes.Add($"KNOWN MALWARE HASH: {bl.Label} ({(bl.Verdict ?? "malware")})");
+            }
         }
 
         if (isPeCandidate && fi.Length <= _options.MaxEntropySize)
@@ -351,6 +379,7 @@ public sealed class FileScanner
             IsReparsePoint = reparse,
             IsExcluded = false,
             Notes = notes,
+            KnownMalwareLabel = knownMalwareLabel,
         };
     }
 

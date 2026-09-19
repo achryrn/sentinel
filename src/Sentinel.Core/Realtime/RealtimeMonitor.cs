@@ -36,10 +36,13 @@ public sealed class RealtimeMonitor : IDisposable
     {
     }
 
+    // Watch ROOTS are persistence locations, NOT the whole temp directory:
+    // Windows temp churns thousands of files/hour and previously fed the
+    // evidence pipeline continuously (a major source of DB noise/bloat).
     public IReadOnlyList<string> CuratedWatchRoots { get; } =
     [
         Environment.GetFolderPath(Environment.SpecialFolder.Startup),
-        Path.GetTempPath(),
+        Environment.GetFolderPath(Environment.SpecialFolder.CommonStartup),
     ];
 
     public IReadOnlyList<(string Hive, string Key)> CuratedRegistryKeys { get; } =
@@ -261,13 +264,21 @@ public sealed class RealtimeMonitor : IDisposable
                     string? name = target["Name"]?.ToString();
                     string? pid = target["ProcessId"]?.ToString();
                     string? cmd = target["CommandLine"]?.ToString();
+                    string? ppid = target["ParentProcessId"]?.ToString();
+                    string? exe = target["ExecutablePath"]?.ToString();
                     _events.Writer.TryWrite(new RealtimeEvent
                     {
                         TimestampUtc = DateTime.UtcNow,
                         Kind = "process-created",
                         Entity = pid ?? "?",
                         Message = $"Process created: {name} (PID {pid})",
-                        DetailsJson = cmd is null ? null : System.Text.Json.JsonSerializer.Serialize(new { commandLine = cmd }),
+                        DetailsJson = System.Text.Json.JsonSerializer.Serialize(new
+                        {
+                            name = name,
+                            commandLine = cmd,
+                            parentPid = ppid is not null && uint.TryParse(ppid, out uint up) ? (uint?)up : null,
+                            executablePath = exe,
+                        }),
                     });
                 }
                 catch (Exception)

@@ -89,6 +89,67 @@ public sealed class ProcessScanner
         return null;
     }
 
+    /// <summary>
+    /// Compares the Toolhelp32 view with the WMI (Win32_Process) view. PIDs
+    /// present in only one view are returned — with SeDebug enabled this is a
+    /// credible userland process-hiding check (an invasive program that hides
+    /// from one enumeration surface may still be visible via the other).
+    /// </summary>
+    public Models.ProcessViewDiscrepancy CompareProcessViews()
+    {
+        var toolhelp = new HashSet<uint>();
+        using (var snap = CreateSnapshot())
+        {
+            if (!snap.IsInvalid)
+            {
+                var entry = new NativeMethods.PROCESSENTRY32W { dwSize = (uint)Marshal.SizeOf<NativeMethods.PROCESSENTRY32W>() };
+                if (NativeMethods.Process32FirstW(snap.Handle, ref entry))
+                {
+                    do
+                    {
+                        if (entry.th32ProcessID != 0)
+                        {
+                            toolhelp.Add(entry.th32ProcessID);
+                        }
+                    }
+                    while (NativeMethods.Process32NextW(snap.Handle, ref entry));
+                }
+            }
+        }
+
+        var wmi = new HashSet<uint>();
+        bool wmiOk = false;
+        try
+        {
+            using var searcher = new System.Management.ManagementObjectSearcher(
+                @"root\cimv2", "SELECT ProcessId FROM Win32_Process");
+            foreach (var o in searcher.Get())
+            {
+                using (o)
+                {
+                    if (o["ProcessId"] is uint pid)
+                    {
+                        wmi.Add(pid);
+                    }
+                }
+            }
+            wmiOk = true;
+        }
+        catch (System.Management.ManagementException)
+        {
+        }
+
+        var onlyTool = toolhelp.Except(wmi).OrderBy(p => p).ToList();
+        var onlyWmi = wmi.Except(toolhelp).OrderBy(p => p).ToList();
+        return new Models.ProcessViewDiscrepancy
+        {
+            ToolhelpSucceeded = true,
+            WmiSucceeded = wmiOk,
+            OnlyToolhelpPids = onlyTool,
+            OnlyWmiPids = onlyWmi,
+        };
+    }
+
     /// <summary>Refreshes full process details for an already-listed process (e.g., after it changed).</summary>
     public async Task<ProcessInfo> AnalyzeAsync(ProcessInfo baseline, bool computeHash = true, CancellationToken ct = default)
     {

@@ -5,6 +5,7 @@ using System.Threading.Channels;
 using Sentinel.Core.Detection;
 using Sentinel.Core.Ipc;
 using Sentinel.Core.Models;
+using Sentinel.Core.Native;
 using Sentinel.Core.Quarantine;
 using Sentinel.Core.Realtime;
 using Sentinel.Core.Scanning;
@@ -35,6 +36,8 @@ public sealed class SentinelService : ServiceBase
     private CancellationTokenSource? _cts;
     private readonly object _scanLock = new();
     private string? _activeScanId;
+    private DetectionServices? _detection;
+    private IReadOnlyList<string> _enabledPrivileges = [];
 
     public SentinelService()
     {
@@ -62,6 +65,14 @@ public sealed class SentinelService : ServiceBase
         _cts = new CancellationTokenSource();
         _store = new SentinelStore();
         _quarantine = new QuarantineManager(_store);
+
+        // System-wide visibility: enable the privileges a deep scanner needs
+        // (SeDebug to open processes, SeBackup/SeRestore/SeTakeOwnership for
+        // ACL-independent file inspection). Without them the scanners degrade
+        // gracefully and report access-denied rather than failing.
+        _enabledPrivileges = Privileges.Enable(Privileges.ScannerPrivileges);
+
+        _detection = new DetectionServices(_store);
         _realtime = new RealtimeMonitor();
         _scheduler = new ScanScheduler(maxConcurrent: 1);
 
@@ -80,6 +91,13 @@ public sealed class SentinelService : ServiceBase
             Category = "system",
             Message = "Sentinel service started.",
             Severity = EventSeverity.Info,
+        });
+        _store.AppendEvent(new SentinelEvent
+        {
+            TimestampUtc = DateTime.UtcNow,
+            Category = "system",
+            Message = $"Enabled privileges: {(string.Join(", ", _enabledPrivileges).Length == 0 ? "NONE — run elevated/LocalSystem for full system visibility" : string.Join(", ", _enabledPrivileges))}. Rules: {_detection.Rules.Count}. AMSI: {(_detection.AmsiAvailable ? "available" : "unavailable")}.",
+            Severity = _enabledPrivileges.Count == Privileges.ScannerPrivileges.Length ? EventSeverity.Info : EventSeverity.Warning,
         });
     }
 
@@ -123,6 +141,25 @@ public sealed class SentinelService : ServiceBase
                 {
                     EnqueueRealtimeEvent(ev);
                     writer.Add(ev);
+
+                    // Deep analysis on the interesting half of the stream:
+                    //  - process-created  -> behavioral process-chain rules
+                    //  - file-created     -> content rules / script heuristics / AMSI
+                    // (The watcher is on persistence locations, so this is cheap.)
+                    if (ev.Kind == "process-created")
+                    {
+                        foreach (var e in _detection!.ObserveProcessEvent(ev))
+                        {
+                            writer.AddEvidence(e);
+                        }
+                    }
+                    else if (ev.Kind == "file-created" || ev.Kind == "file-changed")
+                    {
+                        foreach (var e in _detection!.AnalyzeFileContent(ev.Entity))
+                        {
+                            writer.AddEvidence(e);
+                        }
+                    }
                 }
                 if (writer.Count > 0)
                 {
@@ -174,6 +211,8 @@ public sealed class SentinelService : ServiceBase
 
         public IReadOnlyList<Evidence> Evidence => _evidence;
 
+        public void AddEvidence(Evidence e) => _evidence.Add(e);
+
         public void Add(RealtimeEvent ev)
         {
             var evidence = EvidenceFromRealtime(ev);
@@ -211,17 +250,22 @@ public sealed class SentinelService : ServiceBase
     private static Evidence? EvidenceFromRealtime(RealtimeEvent ev)
     {
         // Realtime events are low-confidence signals; they feed correlation but
-        // never produce a finding on their own.
+        // never produce a finding on their own. Deleted/renamed churn stays in
+        // the event log only — it would only add noise to correlation.
         string entityId = ev.Entity;
-        string evt = ev.Kind switch
+        string? evt = ev.Kind switch
         {
             "file-created" => "realtime-file-created",
             "file-changed" => "realtime-file-changed",
             "process-created" => "realtime-process-created",
             "registry-changed" => "realtime-registry-changed",
-            "network-delta" => "realtime-network-delta",
-            _ => "realtime-event",
+            "network-new" => "realtime-network-delta",
+            _ => null,
         };
+        if (evt is null)
+        {
+            return null;
+        }
         return new Evidence
         {
             Source = "realtime",
@@ -240,7 +284,7 @@ public sealed class SentinelService : ServiceBase
     {
         foreach (var f in findings)
         {
-            _store!.UpsertFinding(new StoredFinding
+            _store!.UpsertFindingConverged(new StoredFinding
             {
                 Id = f.Id,
                 EntityKey = f.EntityKey,
@@ -289,6 +333,7 @@ public sealed class SentinelService : ServiceBase
             try
             {
                 await _store!.CleanupAsync(ct).ConfigureAwait(false);
+                CleanupDumps();
             }
             catch (OperationCanceledException)
             {
@@ -304,6 +349,55 @@ public sealed class SentinelService : ServiceBase
                     Severity = EventSeverity.Error,
                 });
             }
+        }
+    }
+
+    /// <summary>
+    /// Memory dumps can be gigabytes each; they are diagnostic artifacts, not
+    /// detection data. Aged dumps are deleted and the directory is capped so a
+    /// box that was repeatedly dumped cannot fill the disk (part of the
+    /// "tens of GB" storage fix).
+    /// </summary>
+    private static void CleanupDumps()
+    {
+        string dir = Path.Combine(Path.GetDirectoryName(SentinelStore.DefaultDbPath)!, "dumps");
+        try
+        {
+            if (!Directory.Exists(dir))
+            {
+                return;
+            }
+            DateTime cutoff = DateTime.UtcNow.AddDays(-14);
+            foreach (string f in Directory.EnumerateFiles(dir, "*.dmp"))
+            {
+                try
+                {
+                    if (File.GetLastWriteTimeUtc(f) < cutoff)
+                    {
+                        File.Delete(f);
+                    }
+                }
+                catch (Exception)
+                {
+                }
+            }
+            // Keep at most the 20 newest dumps regardless of age.
+            var newest = Directory.EnumerateFiles(dir, "*.dmp")
+                .OrderByDescending(f => { try { return File.GetLastWriteTimeUtc(f); } catch { return DateTime.MinValue; } })
+                .Skip(20);
+            foreach (string f in newest)
+            {
+                try
+                {
+                    File.Delete(f);
+                }
+                catch (Exception)
+                {
+                }
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
         }
     }
 
@@ -381,6 +475,10 @@ public sealed class SentinelService : ServiceBase
                 IpcCommand.GetScanJobs => IpcMessages.Response(request.Id, _store!.GetScanJobs()),
                 IpcCommand.GetRealtimeEvents => IpcMessages.Response(request.Id, GetRealtimeEvents()),
                 IpcCommand.DumpProcessMemory => DumpProcessMemory(request),
+                IpcCommand.GetBlacklist => IpcMessages.Response(request.Id, _store!.GetBlacklist()),
+                IpcCommand.AddBlacklist => AddBlacklist(request),
+                IpcCommand.RemoveBlacklist => RemoveBlacklist(request),
+                IpcCommand.ReloadRules => ReloadRules(request),
                 _ => IpcMessages.Response(request.Id, error: "Unknown command"),
             };
         }
@@ -401,6 +499,10 @@ public sealed class SentinelService : ServiceBase
             RealtimeRunning = _realtime?.IsRunning ?? false,
             StorePath = SentinelStore.DefaultDbPath,
             FindingsCount = _store?.GetFindings(limit: 1).Count ?? 0,
+            EnabledPrivileges = _enabledPrivileges,
+            RulesCount = _detection?.Rules.Count ?? 0,
+            AmsiAvailable = _detection?.AmsiAvailable ?? false,
+            BlacklistCount = _store?.GetBlacklist(limit: 1000).Count ?? 0,
         };
     }
 
@@ -414,6 +516,59 @@ public sealed class SentinelService : ServiceBase
     {
         var payload = JsonSerializer.Deserialize<FindingsRequest>(request.PayloadJson ?? "{}", IpcProtocol.JsonOptions);
         return IpcMessages.Response(request.Id, _store!.GetFindings(payload?.Limit ?? 500, payload?.MinSeverity));
+    }
+
+    private IpcMessage AddBlacklist(IpcMessage request)
+    {
+        var payload = JsonSerializer.Deserialize<BlacklistAddRequest>(request.PayloadJson ?? "{}", IpcProtocol.JsonOptions);
+        if (payload is null || string.IsNullOrWhiteSpace(payload.Sha256))
+        {
+            return IpcMessages.Response(request.Id, error: "Missing sha256.");
+        }
+        _store!.UpsertBlacklist(payload.Sha256, payload.Verdict ?? "malware", payload.Label ?? "user-added", payload.Category, "cli");
+        _store!.AppendEvent(new SentinelEvent
+        {
+            TimestampUtc = DateTime.UtcNow,
+            Category = "detection",
+            Message = $"Blacklist entry added: {payload.Sha256} ({payload.Label})",
+            Severity = EventSeverity.Warning,
+        });
+        return IpcMessages.Response(request.Id, new { ok = true });
+    }
+
+    private sealed record BlacklistAddRequest(string? Sha256, string? Verdict, string? Label, string? Category);
+
+    private IpcMessage RemoveBlacklist(IpcMessage request)
+    {
+        var payload = JsonSerializer.Deserialize<ShaRequest>(request.PayloadJson ?? "{}", IpcProtocol.JsonOptions);
+        if (payload is null || string.IsNullOrWhiteSpace(payload.Sha256))
+        {
+            return IpcMessages.Response(request.Id, error: "Missing sha256.");
+        }
+        _store!.RemoveBlacklist(payload.Sha256);
+        _store!.AppendEvent(new SentinelEvent
+        {
+            TimestampUtc = DateTime.UtcNow,
+            Category = "detection",
+            Message = $"Blacklist entry removed: {payload.Sha256}",
+            Severity = EventSeverity.Info,
+        });
+        return IpcMessages.Response(request.Id, new { ok = true });
+    }
+
+    private sealed record ShaRequest(string? Sha256);
+
+    private IpcMessage ReloadRules(IpcMessage request)
+    {
+        int count = _detection!.ReloadUserRules();
+        _store!.AppendEvent(new SentinelEvent
+        {
+            TimestampUtc = DateTime.UtcNow,
+            Category = "detection",
+            Message = $"Rule engine reloaded: {count} rules active.",
+            Severity = EventSeverity.Info,
+        });
+        return IpcMessages.Response(request.Id, new { rules = count });
     }
 
     private sealed record EvidenceRequest(string? EntityId);
@@ -607,6 +762,7 @@ public sealed class SentinelService : ServiceBase
                 Targets = [payload.Path],
                 Recurse = false,
                 Exclusions = _store!.GetExclusions(),
+                Store = _store,
             };
             var scanner = new FileScanner(options, progress, ct);
             var reports = new List<FileReport>();
@@ -633,15 +789,10 @@ public sealed class SentinelService : ServiceBase
                 Targets = [payload.Path],
                 Recurse = true,
                 Exclusions = _store!.GetExclusions(),
+                Store = _store,
             };
             var scanner = new FileScanner(options, progress, ct);
-            var reports = new List<FileReport>();
-            await foreach (var r in scanner.ScanAsync())
-            {
-                BroadcastFileReport(scanId, r);
-                reports.Add(r);
-            }
-            return reports;
+            return await StreamFileScanAsync(scanId, "folder", scanner, ct);
         });
     }
 
@@ -660,15 +811,10 @@ public sealed class SentinelService : ServiceBase
                 Recurse = true,
                 Exclusions = _store!.GetExclusions(),
                 SkipDirectoryNames = ["Windows", "node_modules", ".git", "AppData\\Local\\Temp"],
+                Store = _store,
             };
             var scanner = new FileScanner(options, progress, ct);
-            var reports = new List<FileReport>();
-            await foreach (var r in scanner.ScanAsync())
-            {
-                BroadcastFileReport(scanId, r);
-                reports.Add(r);
-            }
-            return reports;
+            return await StreamFileScanAsync(scanId, "quick", scanner, ct);
         });
     }
 
@@ -683,17 +829,72 @@ public sealed class SentinelService : ServiceBase
                 Recurse = true,
                 Exclusions = _store!.GetExclusions(),
                 SkipDirectoryNames = ["Windows", "node_modules", ".git"],
+                Store = _store,
             };
             var scanner = new FileScanner(options, progress, ct);
-            var reports = new List<FileReport>();
-            await foreach (var r in scanner.ScanAsync())
-            {
-                BroadcastFileReport(scanId, r);
-                reports.Add(r);
-            }
-            return reports;
+            return await StreamFileScanAsync(scanId, "full", scanner, ct);
         });
     }
+
+    /// <summary>Summary returned for streaming scans (folder/quick/full).</summary>
+    private sealed record ScanSummary(string Mode, long FilesScanned, long BytesScanned, int EvidenceCount);
+
+    /// <summary>
+    /// Streaming file scan: never materializes the full report list in memory.
+    /// Per-file detection evidence is accumulated in small bounded batches,
+    /// correlated and persisted incrementally (with a per-scan correlation
+    /// window), and the IPC response carries only a summary — the per-file
+    /// reports were already streamed as events. 500k-file scans now use flat
+    /// memory instead of gigabytes of report objects.
+    /// </summary>
+    private async Task<ScanSummary> StreamFileScanAsync(string scanId, string mode, FileScanner scanner, CancellationToken ct)
+    {
+        var evidence = new List<Evidence>(2048);
+        var correlation = new CorrelationEngine();
+        long files = 0, bytes = 0;
+        int totalEvidence = 0;
+        await foreach (var r in scanner.ScanAsync())
+        {
+            ct.ThrowIfCancellationRequested();
+            if (InterestingForUi(r))
+            {
+                BroadcastFileReport(scanId, r);
+            }
+            files++;
+            bytes += r.Size;
+            var ev = DetectionEngine.Normalize(file: r);
+            if (ev.Count > 0)
+            {
+                evidence.AddRange(ev);
+            }
+            evidence.AddRange(_detection!.AnalyzeFileContent(r.Path));
+            if (evidence.Count >= 10_000)
+            {
+                totalEvidence += evidence.Count;
+                await FlushScanEvidenceAsync(correlation, evidence, ct).ConfigureAwait(false);
+            }
+        }
+        totalEvidence += evidence.Count;
+        await FlushScanEvidenceAsync(correlation, evidence, ct).ConfigureAwait(false);
+        return new ScanSummary(mode, files, bytes, totalEvidence);
+    }
+
+    /// <summary>Correlates + persists one bounded evidence batch.</summary>
+    private async Task FlushScanEvidenceAsync(CorrelationEngine correlation, List<Evidence> evidence, CancellationToken ct)
+    {
+        if (evidence.Count == 0)
+        {
+            return;
+        }
+        var findings = correlation.Correlate(evidence);
+        PersistFindings(findings);
+        await _store!.InsertBatchAsync(evidence, [], ct).ConfigureAwait(false);
+        evidence.Clear();
+    }
+
+    /// <summary>Which per-file reports are worth streaming to the UI (PEs, flagged files).</summary>
+    private static bool InterestingForUi(FileReport r) =>
+        r.IsPe || r.Notes.Count > 0 || r.HasMotw || r.IsHiddenOrSystem || r.KnownMalwareLabel is not null;
 
     private async Task<IpcMessage> ScanProcessAsync(IpcMessage request)
     {
@@ -852,8 +1053,14 @@ public sealed class SentinelService : ServiceBase
 
     private async Task ProcessScanResultsAsync<T>(string scanId, string mode, T data, CancellationToken ct)
     {
+        // Streaming file scans already persisted their evidence incrementally.
+        if (data is ScanSummary)
+        {
+            return;
+        }
+
         var correlation = new CorrelationEngine();
-        var evidence = new List<Evidence>();
+        var evidence = new List<Evidence>(1024);
 
         switch (data)
         {
@@ -861,6 +1068,7 @@ public sealed class SentinelService : ServiceBase
                 foreach (var f in files)
                 {
                     evidence.AddRange(DetectionEngine.Normalize(file: f));
+                    evidence.AddRange(_detection!.AnalyzeFileContent(f.Path));
                 }
                 break;
             case List<ProcessInfo> procs:
@@ -868,6 +1076,9 @@ public sealed class SentinelService : ServiceBase
                 {
                     evidence.AddRange(DetectionEngine.Normalize(process: p));
                 }
+                // Cross-check two independent process views — a process visible
+                // in only one enumeration surface may be hiding itself.
+                evidence.AddRange(DetectionEngine.NormalizeProcessViews(new ProcessScanner().CompareProcessViews()));
                 break;
             case NetworkSnapshot net:
                 evidence.AddRange(DetectionEngine.Normalize(network: net));
@@ -886,14 +1097,9 @@ public sealed class SentinelService : ServiceBase
                 break;
         }
 
-        foreach (var e in evidence)
-        {
-            ct.ThrowIfCancellationRequested();
-            _store!.InsertEvidence(e);
-        }
-
         var findings = correlation.Correlate(evidence);
         PersistFindings(findings);
+        await _store!.InsertBatchAsync(evidence, [], ct).ConfigureAwait(false);
 
         _store!.AppendEvent(new SentinelEvent
         {

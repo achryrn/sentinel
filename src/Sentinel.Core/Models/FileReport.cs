@@ -64,6 +64,9 @@ public sealed class FileReport
 
     /// <summary>Human-readable summary of notable characteristics.</summary>
     public IReadOnlyList<string> Notes { get; init; } = [];
+
+    /// <summary>Label of the known-bad hash match, when the SHA-256 is on the blacklist.</summary>
+    public string? KnownMalwareLabel { get; init; }
 }
 
 /// <summary>An alternate data stream (ADS) on a file.</summary>

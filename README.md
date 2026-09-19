@@ -41,7 +41,9 @@ Every component is a library class in `Sentinel.Core`; the service, CLI, and GUI
 | `Sentinel.Service` | exe | Windows service host (LocalSystem); owns the pipe server and privileged operations |
 | `Sentinel.Cli` | exe | Headless client for scripting/CI |
 | `Sentinel.Gui` | WPF exe | Unprivileged client; speaks IPC only |
-| `Sentinel.Tests` | xunit | 123 unit + integration tests |
+| `Sentinel.Tests` | xunit | 154 unit + integration tests |
+| `Sentinel.Core` (detection) | — | YARA-lite rule engine, AMSI scanner, script analyzer, process-chain analyzer, SHA-256 blacklist |
+| `test/SoakTest` | console | storage soak harness proving the store stays bounded under churn |
 
 ## Build & run
 
@@ -80,6 +82,11 @@ scan --full            Full scan (C:\)
 findings               List findings
 evidence <entity>      Show evidence for an entity
 events                 Show recent events
+rules                  Show rule engine status (count, AMSI, blacklist)
+rules --reload         Reload user rules from %ProgramData%\Sentinel\rules
+blacklist              List blacklisted hashes
+blacklist --add <hash> <label>   Blacklist a hash
+blacklist --remove <hash>        Remove a hash from the blacklist
 quarantine <path>      Quarantine a file
 quarantine --list      List quarantined items
 quarantine --restore <id>   Restore a quarantined item
@@ -103,41 +110,65 @@ Dashboard, Scan, Threats (findings), Processes, Network, Memory, Persistence, Fi
 
 Every rule emits **evidence** (source, entity, event, severity, confidence, explanation, details). Rules never produce verdicts alone — the correlation engine combines them per entity.
 
-- **File:** unsigned executable, invalid signature, untrusted signer, high entropy, RWX section, section runtime growth, overlay, TLS callbacks, no ASLR, no NX, timestamp anomaly, from-internet (Zone.Identifier), hidden/system attributes, suspicious location
+**Structural rules**
+- **File:** unsigned executable, invalid signature, untrusted signer, high entropy, RWX section, section runtime growth, overlay, TLS callbacks, no ASLR, no NX, timestamp anomaly, from-internet (Zone.Identifier), hidden/system attributes, suspicious location, **known-malware hash (blacklist)**
 - **Process:** unsigned, elevated, system-location, suspicious parent
 - **Memory:** private RWX region, high-entropy executable region, thread start outside module
 - **Network:** suspicious port, exfiltration shape (many outbound connections)
 - **Persistence:** suspicious location, startup entry
 - **System:** Defender disabled, firewall disabled, UAC disabled, stale updates, guest enabled
 
+**Content & behavioral engines (new)**
+- **YARA-lite rule engine** — `%ProgramData%\Sentinel\rules\*.rule` user rules on top of an embedded default pack (10 rules: EICAR, PowerShell download/encoded-command, mimikatz indicators, VBS/JS droppers, Cobalt-beacon indicators, HTTP beacons, batch persistence, char-code obfuscation). ASCII/wide/nocase/hex-with-? strings, and/or/not, N of, any/all.
+- **AMSI scanner** — invokes the Windows AMSI provider (amsi.dll) on scanned content (read-only; no hooking). Used as one more evidence source.
+- **Script analyzer** — PS1/BAT/VBS/JS/HTA/WSF/SCT/... heuristics: encoded commands, download cradles, execute chains, char-code/base64/split-join obfuscation, persistence hooks, credential access.
+- **Process-chain analyzer** — realtime parent/child chains (script host → network, Office → PowerShell, schtasks persistence, hidden launchers, credential tools) with a bounded 1024-PID ring.
+- **Process-view discrepancy** — compares the native (Toolhelp) process list against WMI to surface possible process hiding.
+- **SHA-256 blacklist** — `hash_blacklist` table, seeded with the EICAR hash; per-file lookup during scans.
+
 ## Storage
 
 SQLite at `%ProgramData%\Sentinel\sentinel.db` (service-managed; GUI/CLI never open it directly).
 
+**Bounded by design** — the historic failure mode (tens of GB) is engineered out:
+
+- **Deterministic finding IDs** — one row per entity (`fnd-` + SHA-256 of the entity key); re-scans converge instead of duplicating.
+- **Gating** — a single weak signal stays *evidence*; a finding only appears with ≥ 2 signals or medium+ severity/confidence.
+- **Retention caps** — evidence 100k rows, events 5k, findings 200k (+30/180-day retention by status), scan_jobs 2k, hash_cache 2M; VACUUM only when ≥50% waste.
+- **Streaming scans** — full scans flush evidence in ≤10k batches instead of holding giant in-memory lists.
+- **Curated watch roots** — the realtime monitor no longer watches its own database/WAL directory (the original 52 GB cause).
+
+*Soak-verified:* 2-minute evidence storm + 60 s settle keeps the DB at **~2.6 MB** (was 52 GB).
+
 | Table | Purpose |
 |---|---|
-| `findings` | correlated findings + status |
-| `evidence` | evidence items (bounded, trimmed to ~100k rows) |
-| `scan_jobs` | scan history |
-| `hash_cache` | path → (size, lastWrite, sha256, sha1, md5, firstSeen, verdict) |
+| `findings` | correlated findings (converged per entity) + status |
+| `evidence` | evidence items (bounded, trimmed to 100k rows) |
+| `events` | service/realtime event log (bounded, 5k rows) |
+| `scan_jobs` | scan history (bounded, 2k rows) |
+| `hash_cache` | path → (size, lastWrite, sha256, sha1, md5, firstSeen, verdict); get-before-compute with size+LastWrite match |
+| `hash_blacklist` | known-bad SHA-256 list (seeded with EICAR) |
 | `signer_cache` | signer name → trust state |
 | `exclusions` | auditable exclusions |
 | `quarantine` | quarantine records |
 
 ## Security model
 
-- **Read-only scanning** — no process memory modification, no injection, no auto-execution, no auto-deletion.
+- **Read-only scanning** — no process memory modification, no injection, no auto-execution, no auto-deletion, no AMSI hooking.
+- **Privileges** — the service enables the minimum broad-scope privileges needed to *inspect* a whole system (SeDebug, SeBackup, SeRestore, SeTakeOwnership, SeSecurity) and logs which ones succeeded; every read is opened with restore/backup semantics and closed immediately.
 - **Quarantine** moves files to `%ProgramData%\Sentinel\Quarantine` with metadata; restore/delete are explicit user actions.
 - **Exclusions** are auditable (type, value, scope, added-by, timestamp, rationale) and stored in SQLite.
 - **IPC** is a named pipe with JSON-lines protocol; the GUI/CLI are unprivileged clients.
+- **Dumps** are cleaned up automatically (14 days / 20 newest) by the service maintenance loop.
 
 ## Known limitations (honest)
 
-- No kernel driver — kernel-mode integrity, early-boot activity, and PPL-protected process memory are out of scope.
-- No AMSI integration code (documented as future work; AMSI is a scan *integration* point, not a scanner).
+- No kernel driver — kernel-mode integrity, early-boot activity, and PPL-protected process memory are out of scope (the kernel-driver path is documented as a hard limit in docs/ARCHITECTURE.md).
+- AMSI is used as a *provider query* (scan content through the AMSI API); it is **not** hooked, so its output is one evidence source, not a realtime stream.
 - No auto-remediation; all actions require user confirmation.
 - WMI/COM availability varies by Windows SKU; collectors degrade gracefully (see `SystemAuditor`).
 - Full scans are I/O bound (SHA-256 dominates).
+- Privileged introspection requires an elevated service (console mode needs an admin shell to enable SeDebug/SeBackup/...).
 
 ## Documentation
 

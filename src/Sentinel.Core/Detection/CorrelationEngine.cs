@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using Sentinel.Core.Models;
 
 namespace Sentinel.Core.Detection;
@@ -7,6 +9,13 @@ namespace Sentinel.Core.Detection;
 /// within a time window, links related evidence (e.g. same process across memory +
 /// network + persistence), and produces composite, explainable findings with
 /// MITRE ATT&amp;CK tags.
+///
+/// Finding identity is STABLE: a finding is keyed on its entity (not on a per-run
+/// GUID), so repeated scans / audit cycles update the same row (occurrence count,
+/// last-seen) instead of duplicating rows — the pre-hardening build inserted a new
+/// GUID row per entity on every correlation pass, which is what ballooned the
+/// store to tens of GB. Findings are additionally gated so weak single signals
+/// stay as evidence and only meaningful combinations become findings.
 /// </summary>
 public sealed class CorrelationEngine
 {
@@ -77,8 +86,17 @@ public sealed class CorrelationEngine
             return null;
         }
 
-        var severities = distinct.Select(e => e.Severity).ToList();
-        var max = severities.Max();
+        // Gate: only promote to a finding when the signal is meaningful.
+        // A single weak signal (unsigned exe, MOTW, no-ASLR, ...) stays as
+        // evidence — it is not a verdict and would only add review noise.
+        var max = distinct.Max(e => e.Severity);
+        double maxConf = distinct.Max(e => e.Confidence);
+        bool meaningful = distinct.Count >= 2 || max >= Severity.Medium || maxConf >= 0.75;
+        if (!meaningful)
+        {
+            return null;
+        }
+
         var confidence = Math.Min(1.0, 0.3 + distinct.Sum(e => e.Confidence) * 0.35);
         var tactics = distinct.SelectMany(e => ExtractTactics(e)).Distinct().ToList();
 
@@ -90,7 +108,7 @@ public sealed class CorrelationEngine
 
         return new Finding
         {
-            Id = Guid.NewGuid().ToString("n"),
+            Id = StableEntityId(entityId),
             EvidenceIds = distinct.Select(e => e.Key).ToList(),
             EntityKey = entityId,
             Title = title,
@@ -103,6 +121,17 @@ public sealed class CorrelationEngine
             OccurrenceCount = items.Count,
             RiskScore = RiskAssessor.ScoreOf(distinct),
         };
+    }
+
+    /// <summary>
+    /// Deterministic finding id for an entity: SHA-256 of the entity key, hex,
+    /// prefixed. The same entity always maps to the same id, so correlated
+    /// findings converge on one store row across scans instead of duplicating.
+    /// </summary>
+    public static string StableEntityId(string entityKey)
+    {
+        byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes("sentinel-finding:" + entityKey));
+        return "fnd-" + Convert.ToHexStringLower(hash)[..32];
     }
 
     private static string RecommendAction(Severity max, List<Evidence> items)

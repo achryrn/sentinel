@@ -43,6 +43,8 @@ internal static class Program
                 "memory" => await MemoryAsync(client, args[1..]),
                 "audit" => await AuditAsync(client),
                 "dump" => await DumpAsync(client, args[1..]),
+                "blacklist" => await BlacklistAsync(client, args[1..]),
+                "rules" => await RulesAsync(client, args[1..]),
                 "help" or "--help" or "-h" => PrintUsage(),
                 _ => UnknownCommand(cmd),
             };
@@ -81,6 +83,11 @@ internal static class Program
               memory [pid]           Analyze memory (all processes or one pid)
               audit                  Run system security audit
               dump <pid>             Dump process memory (admin)
+              blacklist              List known-bad hashes
+              blacklist --add <sha256> [label]   Add a known-bad hash
+              blacklist --remove <sha256>        Remove a known-bad hash
+              rules                  Show active rule count
+              rules --reload         Reload user rules from disk
               help                   Show this help
             """);
         return 0;
@@ -140,7 +147,37 @@ internal static class Program
             return 1;
         }
         Console.WriteLine("Scan completed.");
+        if (!string.IsNullOrEmpty(resp.PayloadJson))
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(resp.PayloadJson);
+                if (doc.RootElement.ValueKind == JsonValueKind.Object
+                    && doc.RootElement.TryGetProperty("filesScanned", out var fs))
+                {
+                    string mode = doc.RootElement.TryGetProperty("mode", out var m) ? m.GetString() ?? "?" : "?";
+                    long bytes = doc.RootElement.TryGetProperty("bytesScanned", out var bs) ? bs.GetInt64() : 0;
+                    Console.WriteLine($"  {mode} scan: {fs.GetInt64():N0} files, {FormatBytes(bytes)}.");
+                }
+            }
+            catch (JsonException)
+            {
+            }
+        }
         return 0;
+    }
+
+    private static string FormatBytes(long b)
+    {
+        string[] units = ["B", "KB", "MB", "GB", "TB"];
+        double v = b;
+        int i = 0;
+        while (v >= 1024 && i < units.Length - 1)
+        {
+            v /= 1024;
+            i++;
+        }
+        return $"{v:0.#} {units[i]}";
     }
 
     private static async Task<int> FindingsAsync(IpcClient client)
@@ -420,6 +457,61 @@ internal static class Program
             return 1;
         }
         Console.WriteLine($"Dump written: {result.OutputPath} ({result.BytesWritten} bytes)");
+        return 0;
+    }
+
+    private static async Task<int> BlacklistAsync(IpcClient client, string[] args)
+    {
+        if (args.Length > 0 && args[0] == "--add" && args.Length >= 2)
+        {
+            var sha = args[1].ToLowerInvariant();
+            var label = args.Length > 2 ? string.Join(" ", args[2..]) : "user-added";
+            var resp = await client.RequestAsync(IpcCommand.AddBlacklist, new { Sha256 = sha, Label = label, Verdict = "malware" });
+            Console.WriteLine(resp.Code == 0 ? "Blacklist entry added." : $"Failed: {resp.Error}");
+            return resp.Code == 0 ? 0 : 1;
+        }
+        if (args.Length > 0 && args[0] == "--remove" && args.Length > 1)
+        {
+            var resp = await client.RequestAsync(IpcCommand.RemoveBlacklist, new { Sha256 = args[1].ToLowerInvariant() });
+            Console.WriteLine(resp.Code == 0 ? "Blacklist entry removed." : $"Failed: {resp.Error}");
+            return resp.Code == 0 ? 0 : 1;
+        }
+        var entries = await client.RequestAsync<List<BlacklistEntry>>(IpcCommand.GetBlacklist);
+        if (entries is null || entries.Count == 0)
+        {
+            Console.WriteLine("Blacklist is empty.");
+            return 0;
+        }
+        foreach (var e in entries)
+        {
+            Console.WriteLine($"{e.Sha256}  {e.Verdict,-9}  {e.Label}  (by {e.AddedBy ?? "?"})");
+        }
+        return 0;
+    }
+
+    private static async Task<int> RulesAsync(IpcClient client, string[] args)
+    {
+        if (args.Length > 0 && args[0] == "--reload")
+        {
+            var resp = await client.RequestAsync(IpcCommand.ReloadRules);
+            Console.WriteLine(resp.Code == 0 ? $"Rules reloaded ({resp.PayloadJson})." : $"Failed: {resp.Error}");
+            return resp.Code == 0 ? 0 : 1;
+        }
+        var status = await client.RequestAsync(IpcCommand.Status);
+        if (status.Code != 0)
+        {
+            Console.Error.WriteLine(status.Error);
+            return 1;
+        }
+        var s = JsonSerializer.Deserialize<JsonElement>(status.PayloadJson!, IpcProtocol.JsonOptions);
+        var rules = s.TryGetProperty("rulesCount", out var rc) ? rc.GetInt32() : 0;
+        var amsi = s.TryGetProperty("amsiAvailable", out var aa) ? aa.GetBoolean() : false;
+        var blacklist = s.TryGetProperty("blacklistCount", out var bc) ? bc.GetInt32() : 0;
+        var privs = s.TryGetProperty("enabledPrivileges", out var ep) ? string.Join(", ", ep.EnumerateArray().Select(e => e.GetString())) : "(unknown)";
+        Console.WriteLine($"Rules:            {rules}");
+        Console.WriteLine($"AMSI:             {(amsi ? "available" : "unavailable")}");
+        Console.WriteLine($"Blacklist:        {blacklist} entries");
+        Console.WriteLine($"Privileges:       {privs}");
         return 0;
     }
 

@@ -1,8 +1,8 @@
 evidence:  1000
 events:    501
-db bytes:  2,654,208
-wal bytes: 4,865,752
-db size:   2.5 MB
+db bytes:  2,699,264
+wal bytes: 4,659,752
+db size:   2.6 MB
 
 Expected:
 evidence ≤ 1600 (cap 1000, recent-post-cleaner growth)

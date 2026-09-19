@@ -2,6 +2,19 @@ using Sentinel.Core.Signing;
 
 namespace Sentinel.Core.Models;
 
+/// <summary>
+/// Result of cross-checking two independent process views (Toolhelp32 vs WMI).
+/// A process visible in exactly one view is anomalous — a signature of userland
+/// process-hiding (rootkit artifacts) or of an instrumentation gap.
+/// </summary>
+public sealed record ProcessViewDiscrepancy
+{
+    public bool ToolhelpSucceeded { get; init; }
+    public bool WmiSucceeded { get; init; }
+    public IReadOnlyList<uint> OnlyToolhelpPids { get; init; } = [];
+    public IReadOnlyList<uint> OnlyWmiPids { get; init; } = [];
+}
+
 /// <summary>Information about a running process.</summary>
 public sealed record ProcessInfo
 {
