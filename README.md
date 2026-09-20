@@ -72,6 +72,28 @@ dotnet run --project src/Sentinel.Gui/Sentinel.Gui.csproj
 dotnet test tests/Sentinel.Tests/Sentinel.Tests.csproj
 ```
 
+## Production build & installer
+
+A self-contained, production-ready tree is published to `dist\Sentinel` (gitignored):
+
+```
+dist/Sentinel/
+  service\Sentinel.Service.exe   backend (Windows service, LocalSystem, auto-start)
+  cli\Sentinel.Cli.exe           headless client
+  gui\Sentinel.Gui.exe           WPF dashboard
+  tools\Sentinel.Setup.exe       installer/uninstaller (self-contained; runs on
+                                  any x64 Windows, self-elevates via UAC)
+  install.bat / uninstall.bat / run-gui.bat
+  README.txt                    quickstart
+```
+
+- **Install:** double-click `install.bat` (or `dist\Sentinel\tools\Sentinel.Setup.exe`). Accept the UAC prompt. It copies the tree to `%ProgramFiles%\Sentinel`, registers and starts the `Sentinel` service, writes Start-Menu shortcuts and the Add/Remove Programs entry.
+- **Uninstall:** `uninstall.bat` — stops/removes the service and program files; your database and quarantine are kept in `%ProgramData%\Sentinel`.
+- **Source layout rule:** `Sentinel.Setup.exe` installs the `service`, `cli` and `gui` folders that sit next to it — keep the tree intact if you redistribute it.
+- **Requirements:** .NET 10 Desktop Runtime (x64) for the framework-dependent exes; the installer binary itself bundles the runtime.
+
+Build the tree with the four publish commands in `dist\Sentinel\README.txt` (or `republish.ps1` in the repo root).
+
 ## CLI commands
 
 ```

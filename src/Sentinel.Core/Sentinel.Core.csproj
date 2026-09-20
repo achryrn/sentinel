@@ -22,6 +22,7 @@
     <InternalsVisibleTo Include="Sentinel.Cli" />
     <InternalsVisibleTo Include="Sentinel.Gui" />
     <InternalsVisibleTo Include="Sentinel.Tests" />
+    <InternalsVisibleTo Include="Sentinel.Setup" />
   </ItemGroup>
 
 </Project>
