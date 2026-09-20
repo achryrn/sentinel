@@ -980,6 +980,44 @@ public sealed class SentinelService : ServiceBase
 
     // ---------------- scan runner: bounded scheduler + evidence pipeline ----------------
 
+    /// <summary>
+    /// Scans run at BelowNormal process priority so an active scan never makes
+    /// the machine feel sluggish (quiet operation); restored when the scan ends.
+    /// </summary>
+    private static IDisposable? QuietScanScope()
+    {
+        try
+        {
+            var p = Process.GetCurrentProcess();
+            if (p.PriorityClass == ProcessPriorityClass.Normal)
+            {
+                p.PriorityClass = ProcessPriorityClass.BelowNormal;
+                return new PriorityRestore(p);
+            }
+        }
+        catch
+        {
+            // Not fatal: priority is an optimization, not a requirement.
+        }
+        return null;
+    }
+
+    private sealed class PriorityRestore : IDisposable
+    {
+        private readonly Process _p;
+        internal PriorityRestore(Process p) => _p = p;
+        public void Dispose()
+        {
+            try
+            {
+                _p.PriorityClass = ProcessPriorityClass.Normal;
+            }
+            catch
+            {
+            }
+        }
+    }
+
     private async Task<IpcMessage> RunScanAsync<T>(string requestId, string mode, Func<string, IProgress<ScanProgress>, CancellationToken, Task<T>> scan)
     {
         string scanId = Guid.NewGuid().ToString("n");
@@ -1020,6 +1058,7 @@ public sealed class SentinelService : ServiceBase
 
         try
         {
+            using var quiet = QuietScanScope();
             T? data = default;
             await _scheduler!.Enqueue(async ct =>
             {

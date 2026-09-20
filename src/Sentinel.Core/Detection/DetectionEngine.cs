@@ -605,8 +605,34 @@ public sealed class DetectionEngine
             Severity = severity,
             Confidence = confidence,
             Explanation = explanation,
-            DetailsJson = JsonSerializer.Serialize(details, s_json),
+            DetailsJson = CapDetailsJson(JsonSerializer.Serialize(details, s_json)),
         };
+    }
+
+    /// <summary>Maximum serialized bytes allowed for one evidence details payload.</summary>
+    internal const int MaxDetailsJsonBytes = 4096;
+
+    /// <summary>
+    /// Bounds evidence details to <see cref="MaxDetailsJsonBytes"/>. Oversized
+    /// payloads (full PE import/export tables, verbose scan reports) are replaced
+    /// with a valid-JSON summary that keeps the head of the original — the DB must
+    /// never grow with scanner verbosity. The historical 52 GB failure came from
+    /// exactly this class of unbounded details rows.
+    /// </summary>
+    internal static string CapDetailsJson(string json)
+    {
+        if (string.IsNullOrEmpty(json) || System.Text.Encoding.UTF8.GetByteCount(json) <= MaxDetailsJsonBytes)
+        {
+            return json;
+        }
+        int head = Math.Min(json.Length, MaxDetailsJsonBytes / 2);
+        // never split a surrogate pair
+        if (head > 1 && char.IsHighSurrogate(json[head - 1]) && head < json.Length && char.IsLowSurrogate(json[head]))
+        {
+            head--;
+        }
+        var excerpt = new { truncated = true, originalLength = json.Length, head = json[..head] };
+        return JsonSerializer.Serialize(excerpt, s_json);
     }
 
     private static bool IsKnownSystemPath(string path)

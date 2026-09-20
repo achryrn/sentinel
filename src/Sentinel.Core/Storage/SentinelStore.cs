@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
+using Sentinel.Core.Detection;
 using Sentinel.Core.Models;
 
 namespace Sentinel.Core.Storage;
@@ -393,7 +394,7 @@ public sealed class SentinelStore : IDisposable
             cmd.Parameters.AddWithValue("$sev", (int)e.Severity);
             cmd.Parameters.AddWithValue("$conf", e.Confidence);
             cmd.Parameters.AddWithValue("$expl", e.Explanation);
-            cmd.Parameters.AddWithValue("$details", e.DetailsJson ?? (object)DBNull.Value);
+            cmd.Parameters.AddWithValue("$details", e.DetailsJson is null ? (object)DBNull.Value : DetectionEngine.CapDetailsJson(e.DetailsJson));
             cmd.ExecuteNonQuery();
         });
     }
@@ -466,7 +467,7 @@ public sealed class SentinelStore : IDisposable
                             cmd.Parameters.AddWithValue("$sev", (int)e.Severity);
                             cmd.Parameters.AddWithValue("$conf", e.Confidence);
                             cmd.Parameters.AddWithValue("$expl", e.Explanation);
-                            cmd.Parameters.AddWithValue("$details", e.DetailsJson ?? (object)DBNull.Value);
+                            cmd.Parameters.AddWithValue("$details", e.DetailsJson is null ? (object)DBNull.Value : DetectionEngine.CapDetailsJson(e.DetailsJson));
                             cmd.ExecuteNonQuery();
                         }
 
@@ -494,7 +495,7 @@ public sealed class SentinelStore : IDisposable
                             cmd.Parameters.AddWithValue("$msg", ev.Message);
                             cmd.Parameters.AddWithValue("$sev", (int)ev.Severity);
                             cmd.Parameters.AddWithValue("$entity", ev.Entity ?? (object)DBNull.Value);
-                            cmd.Parameters.AddWithValue("$details", ev.DetailsJson ?? (object)DBNull.Value);
+                            cmd.Parameters.AddWithValue("$details", ev.DetailsJson is null ? (object)DBNull.Value : DetectionEngine.CapDetailsJson(ev.DetailsJson));
                             cmd.ExecuteNonQuery();
                         }
                     }
@@ -927,7 +928,7 @@ public sealed class SentinelStore : IDisposable
             cmd.Parameters.AddWithValue("$msg", ev.Message);
             cmd.Parameters.AddWithValue("$sev", (int)ev.Severity);
             cmd.Parameters.AddWithValue("$entity", ev.Entity ?? (object)DBNull.Value);
-            cmd.Parameters.AddWithValue("$details", ev.DetailsJson ?? (object)DBNull.Value);
+            cmd.Parameters.AddWithValue("$details", ev.DetailsJson is null ? (object)DBNull.Value : DetectionEngine.CapDetailsJson(ev.DetailsJson));
             cmd.ExecuteNonQuery();
         });
     }

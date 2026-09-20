@@ -152,6 +152,15 @@ SQLite at `%ProgramData%\Sentinel\sentinel.db` (service-managed; GUI/CLI never o
 | `exclusions` | auditable exclusions |
 | `quarantine` | quarantine records |
 
+## Resource profile (measured, Windows 11 x64)
+
+- **RAM (idle):** ~55 MB working set / ~17 MB private for the service — quiet enough to coexist with everything else.
+- **RAM (active scan):** peak ~250 MB working set for a 547 MB / 880-file folder scan; GC returns it to ~135 MB after the scan. Files are streamed; nothing whole-file is loaded except small PE headers and capped content buffers.
+- **CPU (idle):** ~3% of one core (event-driven realtime pumps, 2 s network poll, 60 s cleanup, 30 min posture audit).
+- **CPU (scan):** one core at BelowNormal priority — scans never make the machine feel sluggish; other apps are scheduled first.
+- **GPU:** none. The service is text-mode compute (CPU + disk); the WPF GUI uses GPU-accelerated composition only for its own windows at idle-level cost. There is no GPU work to configure.
+- **Storage (write per scan):** bounded by evidence/details caps — a 547 MB scan adds ~6 MB to the DB and the WAL checkpoints every 60 s. Per-evidence `details_json` is capped at 4 KB; an 880-file scan that previously wrote ~24 MB of scanner-report JSON now writes a few MB.
+
 ## Security model
 
 - **Read-only scanning** — no process memory modification, no injection, no auto-execution, no auto-deletion, no AMSI hooking.

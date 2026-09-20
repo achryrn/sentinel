@@ -111,6 +111,18 @@ Scanner  Scanner  Scanner   Scanner       Scanner
 
 **Verified:** the `test/SoakTest` harness storms the store for ~2 minutes then settles — the database stays at **~2.6 MB** (bounded), and the EICAR E2E run keeps `sentinel.db` at **~0.35 MB** after repeated rescans plus live realtime monitoring.
 
+**Follow-up regression found & fixed during resource measurement:** the first run of an 880-file (547 MB) folder scan grew the store to **54 MB** — `details_json` was embedding the *full* scan report per evidence row (complete PE import/export tables, avg ~12 KB, up to 111 KB per row). Fixed at two layers: `DetectionEngine.CapDetailsJson` (4 KB cap, valid-JSON summary keeps the head) and a store-side cap on every insert. The same scan now produces a **~6.4 MB DB** (+ ~8 MB transient WAL, checkpointed every 60 s). Covered by regression test `CapDetailsJson_BoundsOversizedPayload_KeepsValidJson`.
+
+**Measured resource profile (Windows 11 x64, service process):**
+
+| Sector | Idle | Active scan (547 MB / 880 files) |
+|---|---|---|
+| RAM | ~55 MB working set / ~17 MB private | peak ~250 MB working set, falls back to ~135 MB after |
+| CPU | ~3% of one core | one core, **BelowNormal priority** (new — scans yield to interactive work) |
+| GPU | 0 (service is CPU/disk text-mode compute) | 0 |
+| Storage | no writes; 60 s cleanup, 30 min audit | ~6.4 MB DB + transient WAL; caps + details cap prevent growth |
+| Disk I/O during scan | none | sequential single-threaded reads; no throttle by design (priority handles responsiveness) |
+
 ---
 
 ## 6. File Scanner

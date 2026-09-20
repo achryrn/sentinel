@@ -12,6 +12,27 @@ namespace Sentinel.Tests;
 /// </summary>
 public class DetectionEngineTests
 {
+    [Fact]
+    public void CapDetailsJson_BoundsOversizedPayload_KeepsValidJson()
+    {
+        // Regression: the pre-hardening store could grow tens of GB because
+        // evidence details embedded full scanner reports (PE import/export
+        // tables). Details must be capped and stay valid JSON for the GUI.
+        var big = new { blob = new string('x', 100_000), path = @"C:\a\b.exe" };
+        string raw = System.Text.Json.JsonSerializer.Serialize(big);
+        Assert.True(System.Text.Encoding.UTF8.GetByteCount(raw) > DetectionEngine.MaxDetailsJsonBytes);
+
+        string capped = DetectionEngine.CapDetailsJson(raw);
+        Assert.True(System.Text.Encoding.UTF8.GetByteCount(capped) <= DetectionEngine.MaxDetailsJsonBytes);
+        using var doc = System.Text.Json.JsonDocument.Parse(capped); // must not throw
+        Assert.True(doc.RootElement.GetProperty("truncated").GetBoolean());
+        Assert.True(doc.RootElement.GetProperty("head").GetString()!.StartsWith('{'.ToString(), StringComparison.Ordinal));
+
+        // Small payloads pass through untouched.
+        Assert.Equal("[1]", DetectionEngine.CapDetailsJson("[1]"));
+        Assert.Equal("", DetectionEngine.CapDetailsJson(""));
+    }
+
     private static FileReport File(
         string path = @"C:\Users\Test\AppData\Local\Temp\evil.exe",
         string fileName = "evil.exe",
