@@ -6,3 +6,16 @@ TestResults/
 artifacts/
 *.dmp
 dist/
+
+# soak-test runtime artifacts (regenerated on each run)
+test/SoakTest/soak.db*
+test/SoakTest/soak-result.txt
+
+# editor / agent cruft (never commit)
+.claude/
+CLAUDE.md
+.idea/
+.vscode/
+.DS_Store
+*.log
+.env
