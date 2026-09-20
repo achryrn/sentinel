@@ -176,7 +176,7 @@ public sealed class MemoryScanner
 
     /// <summary>
     /// Dumps a process to a minidump file using MiniDumpWriteDump (read-only).
-    /// Protected processes (PPL) will fail with ERROR_ACCESS_DENIED — reported honestly.
+    /// Protected processes (PPL) will fail with ERROR_ACCESS_DENIED - reported honestly.
     /// </summary>
     public MemoryDumpResult Dump(uint pid, string outputPath, bool fullMemory = false)
     {
@@ -197,7 +197,7 @@ public sealed class MemoryScanner
             {
                 Pid = pid,
                 Success = false,
-                Error = "Cannot open process (access denied — protected/elevated process).",
+                Error = "Cannot open process (access denied - protected/elevated process).",
                 IsProtectedProcess = true,
             };
         }

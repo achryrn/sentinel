@@ -34,11 +34,11 @@ public partial class ScanView : UserControl, IRefreshable
         ProgressState.Text = state switch
         {
             "enumerating" => "Enumerating files…",
-            "scanning" => $"Scanning — {PercentOf(p):0.0}%",
+            "scanning" => $"Scanning - {PercentOf(p):0.0}%",
             "hashing" => "Computing hashes…",
             "done" => "Complete",
             "completed" or "4" => "Complete",
-            "running" or "1" => $"Scanning — {PercentOf(p):0.0}%",
+            "running" or "1" => $"Scanning - {PercentOf(p):0.0}%",
             "queued" or "0" => "Queued…",
             "paused" or "2" => "Paused",
             "cancelled" or "3" => "Cancelled",
@@ -122,7 +122,7 @@ public partial class ScanView : UserControl, IRefreshable
             // No explicit target: give the user a choice instead of silently failing.
             var choice = MessageBox.Show(
                 "No path was entered.\n\nWould you like to run a Quick scan instead (user profile + program data)?\n\nClick Yes to scan those general locations, or No to enter a path manually.",
-                "Sentinel — No scan target",
+                "Sentinel - No scan target",
                 MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
             if (choice == MessageBoxResult.Yes)
             {
@@ -183,7 +183,7 @@ public partial class ScanView : UserControl, IRefreshable
                 return TimeSpan.FromSeconds(v.GetDouble()).ToString(@"hh\:mm\:ss");
             }
         }
-        return "—";
+        return "-";
     }
 
     private static string FormatBytes(long b)

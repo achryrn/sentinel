@@ -134,7 +134,7 @@ public sealed class RealtimeMonitor : IDisposable
         }
         catch (Exception)
         {
-            // Directory removed or access denied — monitor stops for this root.
+            // Directory removed or access denied - monitor stops for this root.
         }
         finally
         {
@@ -297,7 +297,7 @@ public sealed class RealtimeMonitor : IDisposable
         }
         catch (Exception)
         {
-            // WMI unavailable — snapshot reconciliation is the backstop.
+            // WMI unavailable - snapshot reconciliation is the backstop.
         }
     }
 

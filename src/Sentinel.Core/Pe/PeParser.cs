@@ -6,7 +6,7 @@ public enum PeParseStatus
     /// <summary>File parsed successfully as a PE image.</summary>
     Ok,
 
-    /// <summary>File does not start with the MZ magic — not a PE at all.</summary>
+    /// <summary>File does not start with the MZ magic - not a PE at all.</summary>
     NotPe,
 
     /// <summary>MZ present but header layout is corrupt (bad e_lfanew, bad signature, truncated, etc.).</summary>
@@ -123,7 +123,7 @@ public sealed class PeInfo
             }
             if (TimeDateStamp == 0xFFFFFFFF)
             {
-                return "Link timestamp is 0xFFFFFFFF (deliberately invalidated — common with packed/obfuscated binaries).";
+                return "Link timestamp is 0xFFFFFFFF (deliberately invalidated - common with packed/obfuscated binaries).";
             }
             if (LinkTimeUtc is { } t && t > DateTimeOffset.UtcNow.AddDays(1))
             {
@@ -249,7 +249,7 @@ public sealed class PeParser
             ushort dosMagic = ReadU16(dos, 0);
             if (dosMagic != DosMagic)
             {
-                return Fail(PeParseStatus.NotPe, "File does not start with MZ — not a PE image.");
+                return Fail(PeParseStatus.NotPe, "File does not start with MZ - not a PE image.");
             }
 
             int e_lfanew = ReadI32(dos, 0x3C);

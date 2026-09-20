@@ -66,7 +66,7 @@ public partial class MemoryView : UserControl, IRefreshable
             // No valid PID: fall back to the all-processes analysis instead of failing silently.
             var choice = MessageBox.Show(
                 "No valid PID was entered.\n\nWould you like to analyze all processes instead?\n\nClick Yes to run a full memory analysis, or No to enter a PID manually.",
-                "Sentinel — No PID entered",
+                "Sentinel - No PID entered",
                 MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
             if (choice == MessageBoxResult.Yes)
             {

@@ -40,10 +40,10 @@ public sealed class Rule
 /// <summary>Condition AST for <see cref="Rule"/>.</summary>
 public abstract record RuleCondition;
 
-/// <summary>"$a" — the string is present.</summary>
+/// <summary>"$a" - the string is present.</summary>
 public sealed record StringPresent(string Id) : RuleCondition;
 
-/// <summary>"#a &gt;= N" — occurrence count check.</summary>
+/// <summary>"#a &gt;= N" - occurrence count check.</summary>
 public sealed record CountAtLeast(string Id, int N) : RuleCondition;
 
 /// <summary>"all of them".</summary>
@@ -52,7 +52,7 @@ public sealed record AllOfCondition : RuleCondition;
 /// <summary>"any of them".</summary>
 public sealed record AnyOfCondition : RuleCondition;
 
-/// <summary>"N of them" — at least N of the rule's strings present.</summary>
+/// <summary>"N of them" - at least N of the rule's strings present.</summary>
 public sealed record NOfCondition(int N) : RuleCondition;
 
 /// <summary>"A and B".</summary>
@@ -344,7 +344,7 @@ public static class RuleEngine
             }
             else
             {
-                // Malformed pair — wildcard so the string simply never matches.
+                // Malformed pair - wildcard so the string simply never matches.
                 bytes.Add((byte)'?');
             }
         }
@@ -356,7 +356,7 @@ public static class RuleEngine
     /// <summary>
     /// Parses YARA-lite rule text into rules. Unsupported constructs (regex
     /// strings, imports, identifiers we cannot evaluate) cause that rule to be
-    /// skipped — a parse failure never aborts the whole pack.
+    /// skipped - a parse failure never aborts the whole pack.
     /// </summary>
     public static IReadOnlyList<Rule> Parse(string text)
     {
@@ -371,7 +371,7 @@ public static class RuleEngine
             }
             if (!text.AsSpan(pos).StartsWith("rule", StringComparison.OrdinalIgnoreCase))
             {
-                // Unknown top-level token — skip to next 'rule' keyword.
+                // Unknown top-level token - skip to next 'rule' keyword.
                 int next = text.IndexOf("rule", pos + 1, StringComparison.OrdinalIgnoreCase);
                 if (next < 0)
                 {
@@ -509,7 +509,7 @@ public static class RuleEngine
                 string rest = line[(eq + 1)..].Trim();
                 if (rest.StartsWith('/'))
                 {
-                    continue; // regex unsupported — skip this string
+                    continue; // regex unsupported - skip this string
                 }
                 if (rest.StartsWith('{'))
                 {
@@ -550,7 +550,7 @@ public static class RuleEngine
             }
             else
             {
-                break; // no section yet — malformed body
+                break; // no section yet - malformed body
             }
         }
 
@@ -770,7 +770,7 @@ public static class RuleEngine
                 {
                     Pos += 2;
                     SkipWs();
-                    // "N of ($a, $b, $c)" — a narrower set; keep the same semantics
+                    // "N of ($a, $b, $c)" - a narrower set; keep the same semantics
                     // by re-using NOfCondition (engine counts all strings present).
                     if (Pos < Text.Length && Text[Pos] == '(')
                     {

@@ -28,7 +28,7 @@ public partial class SettingsView : UserControl, IRefreshable
             if (status is not null)
             {
                 ServiceText.Text = $"{(status.Running ? "Online" : "Offline")} · active scan: {status.ActiveScanId ?? "none"} · realtime: {(status.RealtimeRunning ? "on" : "off")}";
-                StoreText.Text = status.StorePath ?? "—";
+                StoreText.Text = status.StorePath ?? "-";
             }
             var exclusions = await _client.RequestAsync<List<Exclusion>>(IpcCommand.GetExclusions);
             _exclusions.Clear();
@@ -51,11 +51,11 @@ public partial class SettingsView : UserControl, IRefreshable
         var value = ValueBox.Text.Trim();
         if (string.IsNullOrEmpty(value))
         {
-            // No fallback exists for exclusions (a value is mandatory) — warn clearly so the user
+            // No fallback exists for exclusions (a value is mandatory) - warn clearly so the user
             // is never left wondering why nothing happened.
             MessageBox.Show(
-                "An exclusion needs a value — a full file path, a 64-char SHA-256 hash, or a signer name.\n\nExample path:  C:\\Program Files\\SomeApp\nExample hash: 4f6a2b9c… (SHA-256, 64 hex chars)\nExample signer: Microsoft Corporation",
-                "Sentinel — Exclusion value required",
+                "An exclusion needs a value - a full file path, a 64-char SHA-256 hash, or a signer name.\n\nExample path:  C:\\Program Files\\SomeApp\nExample hash: 4f6a2b9c… (SHA-256, 64 hex chars)\nExample signer: Microsoft Corporation",
+                "Sentinel - Exclusion value required",
                 MessageBoxButton.OK, MessageBoxImage.Information);
             ValueBox.Focus();
             return;

@@ -12,7 +12,7 @@ namespace Sentinel.Core.Detection;
 ///
 /// Finding identity is STABLE: a finding is keyed on its entity (not on a per-run
 /// GUID), so repeated scans / audit cycles update the same row (occurrence count,
-/// last-seen) instead of duplicating rows — the pre-hardening build inserted a new
+/// last-seen) instead of duplicating rows - the pre-hardening build inserted a new
 /// GUID row per entity on every correlation pass, which is what ballooned the
 /// store to tens of GB. Findings are additionally gated so weak single signals
 /// stay as evidence and only meaningful combinations become findings.
@@ -88,7 +88,7 @@ public sealed class CorrelationEngine
 
         // Gate: only promote to a finding when the signal is meaningful.
         // A single weak signal (unsigned exe, MOTW, no-ASLR, ...) stays as
-        // evidence — it is not a verdict and would only add review noise.
+        // evidence - it is not a verdict and would only add review noise.
         var max = distinct.Max(e => e.Severity);
         double maxConf = distinct.Max(e => e.Confidence);
         bool meaningful = distinct.Count >= 2 || max >= Severity.Medium || maxConf >= 0.75;
@@ -101,8 +101,8 @@ public sealed class CorrelationEngine
         var tactics = distinct.SelectMany(e => ExtractTactics(e)).Distinct().ToList();
 
         string title = distinct.Count == 1
-            ? $"{max} — {distinct[0].Explanation}"
-            : $"{max} — {distinct.Count} correlated signals on {entityId}";
+            ? $"{max} - {distinct[0].Explanation}"
+            : $"{max} - {distinct.Count} correlated signals on {entityId}";
 
         string action = RecommendAction(max, distinct);
 
@@ -144,7 +144,7 @@ public sealed class CorrelationEngine
         {
             return "Review the entity in the UI and decide whether to allow it (add exclusion if trusted).";
         }
-        return "Informational — monitor; no action required.";
+        return "Informational - monitor; no action required.";
     }
 
     private static readonly HashSet<string> s_tacticKeywords = new(StringComparer.OrdinalIgnoreCase)
@@ -189,7 +189,7 @@ public sealed class CorrelationEngine
 /// <summary>
 /// Weighted, explainable risk scoring per entity. Each reason contributes
 /// (severity × confidence × weight) with explicit capping; a finding is never
-/// a bare number — the full reason list is always presented.
+/// a bare number - the full reason list is always presented.
 /// </summary>
 public static class RiskAssessor
 {

@@ -77,7 +77,7 @@ public sealed class SentinelStore : IDisposable
     /// <summary>
     /// Hard cap on resident data for the enforcement tier: when live data
     /// exceeds this, a trim may evict rows from the table that is farthest past
-    /// its row cap (critical rows — findings, quarantine — are never evicted by
+    /// its row cap (critical rows - findings, quarantine - are never evicted by
     /// the automatic trim). Default: 200 MB.
     /// </summary>
     public const long TrimHardCapBytes = 200L * 1024 * 1024;
@@ -254,7 +254,7 @@ public sealed class SentinelStore : IDisposable
     /// <summary>
     /// Converging upsert: keeps at most ONE active finding row per entity.
     /// If the entity already has a finding with a user-set status (Allowed,
-    /// FalsePositive, Quarantined) that row is updated in place — the user's
+    /// FalsePositive, Quarantined) that row is updated in place - the user's
     /// decision survives re-scans. Otherwise the deterministic finding id
     /// (stable per entity) makes repeated scans update the same row instead of
     /// duplicating it (the pre-hardening build inserted a fresh GUID row every
@@ -282,7 +282,7 @@ public sealed class SentinelStore : IDisposable
 
             // Resolve target id + status, then write.
             // Status rule: the correlation pipeline always upserts with "New".
-            // If the row already carries a user decision (non-New), keep it —
+            // If the row already carries a user decision (non-New), keep it -
             // otherwise adopt the incoming status.
             string id = existingId ?? f.Id;
             int status = (existingStatus >= 0 && (int)f.Status == (int)FindingStatus.New && existingStatus != (int)FindingStatus.New)
@@ -411,7 +411,7 @@ public sealed class SentinelStore : IDisposable
     /// transaction, serialized against the cleaner and all other writers by the
     /// single-writer lock (the pre-hardening version ran its transaction WITHOUT
     /// the lock, so the periodic cleaner could start mid-transaction and fail
-    /// with "pending local transaction" — surfaced by the soak test).
+    /// with "pending local transaction" - surfaced by the soak test).
     /// </summary>
     public async Task InsertBatchAsync(
         IReadOnlyList<Evidence> evidence,
@@ -1121,11 +1121,11 @@ public sealed class SentinelStore : IDisposable
         dbSizeBytes = pageCount * pageSize;
         if (dbSizeBytes < TrimLowWaterMarkBytes)
         {
-            return; // tiny store — nothing to shrink.
+            return; // tiny store - nothing to shrink.
         }
         if (freelistCount * pageSize < Math.Max(dbSizeBytes / 2, 1))
         {
-            return; // less than 50% waste — VACUUM would not pay off.
+            return; // less than 50% waste - VACUUM would not pay off.
         }
 
         // VACUUM needs the whole DB to itself.

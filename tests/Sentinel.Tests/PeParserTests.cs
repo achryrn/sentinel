@@ -213,7 +213,7 @@ public class PeParserTests
     [Fact]
     public void MissingFile_ThrowsFileNotFound()
     {
-        // Parent dir exists (temp), file itself does not — yields FileNotFoundException.
+        // Parent dir exists (temp), file itself does not - yields FileNotFoundException.
         string path = Path.Combine(Path.GetTempPath(), $"sentinel-missing-{Guid.NewGuid():n}.exe");
         Assert.Throws<FileNotFoundException>(() => PeParser.Parse(path));
     }

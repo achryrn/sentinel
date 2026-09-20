@@ -91,7 +91,7 @@ public sealed class ProcessScanner
 
     /// <summary>
     /// Compares the Toolhelp32 view with the WMI (Win32_Process) view. PIDs
-    /// present in only one view are returned — with SeDebug enabled this is a
+    /// present in only one view are returned - with SeDebug enabled this is a
     /// credible userland process-hiding check (an invasive program that hides
     /// from one enumeration surface may still be visible via the other).
     /// </summary>

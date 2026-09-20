@@ -69,7 +69,7 @@ public static class SignatureVerifier
     /// </summary>
     /// <param name="path">Full path to the file.</param>
     /// <param name="extractSigner">When true (default), also extracts signer name and signing time (extra crypto calls).</param>
-    /// <returns>A <see cref="SignatureResult"/> — never throws for policy/signature issues.</returns>
+    /// <returns>A <see cref="SignatureResult"/> - never throws for policy/signature issues.</returns>
     public static SignatureResult Verify(string path, bool extractSigner = true)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
@@ -81,7 +81,7 @@ public static class SignatureVerifier
                 return new SignatureResult { Status = SignatureStatus.Unknown, Explanation = "File does not exist." };
             }
 
-            // 1) WinVerifyTrust — authoritative check.
+            // 1) WinVerifyTrust - authoritative check.
             var fileInfo = new NativeMethods.WINTRUST_FILE_INFO
             {
                 cbStruct = (uint)Marshal.SizeOf<NativeMethods.WINTRUST_FILE_INFO>(),
@@ -146,7 +146,7 @@ public static class SignatureVerifier
                     {
                         Status = SignatureStatus.SignatureInvalid,
                         WinVerifyTrustError = hr,
-                        Explanation = "Signature digest does not match the file content (TRUST_E_BAD_DIGEST) — file likely tampered.",
+                        Explanation = "Signature digest does not match the file content (TRUST_E_BAD_DIGEST) - file likely tampered.",
                     };
                 }
 

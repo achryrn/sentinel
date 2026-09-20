@@ -37,10 +37,10 @@ public sealed record MemoryAnalysisResult
     public IReadOnlyList<MemoryRegion> Regions { get; init; } = [];
     public IReadOnlyList<ThreadStartInfo> ThreadStarts { get; init; } = [];
 
-    /// <summary>Regions that are both private and executable (RWX or RX private) — injection signal.</summary>
+    /// <summary>Regions that are both private and executable (RWX or RX private) - injection signal.</summary>
     public IReadOnlyList<MemoryRegion> SuspiciousRegions { get; init; } = [];
 
-    /// <summary>Threads whose start address is outside any loaded module — injection signal.</summary>
+    /// <summary>Threads whose start address is outside any loaded module - injection signal.</summary>
     public IReadOnlyList<ThreadStartInfo> SuspiciousThreads { get; init; } = [];
 
     public long TotalPrivateBytes { get; init; }

@@ -5,7 +5,7 @@ namespace Sentinel.Core.Detection;
 /// <summary>AMSI verdict on scanned content.</summary>
 public enum AmsiVerdict
 {
-    /// <summary>amsi.dll unavailable or failed to initialize — no verdict.</summary>
+    /// <summary>amsi.dll unavailable or failed to initialize - no verdict.</summary>
     Unavailable,
     /// <summary>Content was scanned and is clean (or not detected).</summary>
     Clean,
@@ -17,8 +17,8 @@ public enum AmsiVerdict
 /// AMSI (Antimalware Scan Interface) integration. Windows 10+ ships amsi.dll;
 /// script engines (PowerShell, JScript, VBA, ...) and many AVs use it to hand
 /// content to registered providers (Defender, third parties). Sentinel calls it
-/// on script/archive content so every AMSI provider on the box — not just our
-/// own rules — gets a chance to flag the payload. The call is best-effort and
+/// on script/archive content so every AMSI provider on the box - not just our
+/// own rules - gets a chance to flag the payload. The call is best-effort and
 /// strictly read-only: when amsi.dll is missing or providers are absent there is
 /// simply no verdict.
 /// </summary>

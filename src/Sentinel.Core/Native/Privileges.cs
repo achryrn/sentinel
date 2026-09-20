@@ -7,11 +7,11 @@ namespace Sentinel.Core.Native;
 /// Enables the Windows privileges an endpoint scanner needs for SYSTEM-WIDE
 /// visibility (the same privileges real AVs hold):
 ///
-///   SeDebugPrivilege       — open other processes (VM_READ / query / dump)
-///   SeBackupPrivilege      — traverse/read files regardless of ACL
-///   SeRestorePrivilege     — write/restore file data (quarantine restore under ACLs)
-///   SeTakeOwnershipPrivilege — take ownership of files for inspection
-///   SeSecurityPrivilege    — read security audit logs / SACL
+///   SeDebugPrivilege       - open other processes (VM_READ / query / dump)
+///   SeBackupPrivilege      - traverse/read files regardless of ACL
+///   SeRestorePrivilege     - write/restore file data (quarantine restore under ACLs)
+///   SeTakeOwnershipPrivilege - take ownership of files for inspection
+///   SeSecurityPrivilege    - read security audit logs / SACL
 ///
 /// Strictly read/inspection oriented: nothing here modifies processes or memory.
 /// Requires elevation (Administrator) or LocalSystem; when unavailable the

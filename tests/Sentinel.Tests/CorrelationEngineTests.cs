@@ -82,7 +82,7 @@ public class CorrelationEngineTests
     [Fact]
     public void SingleWeakSignal_StaysEvidence_NoFinding()
     {
-        // Pre-hardening, ANY evidence produced a GUID finding — the source of
+        // Pre-hardening, ANY evidence produced a GUID finding - the source of
         // unbounded DB growth. A single low-severity signal is evidence only.
         // A fresh engine per call: the correlation window is deliberately stateful.
         var now = DateTime.UtcNow;
@@ -163,7 +163,7 @@ public class CorrelationEngineTests
     {
         var engine = new CorrelationEngine();
         var e = Ev(@"C:\evil\evil.exe", "startup-folder-item", Severity.Medium, 0.6,
-            "Item 'evil' in the startup folder — persistence mechanism.", DateTime.UtcNow);
+            "Item 'evil' in the startup folder - persistence mechanism.", DateTime.UtcNow);
 
         var findings = engine.Correlate([e]);
 
@@ -176,7 +176,7 @@ public class CorrelationEngineTests
     {
         var engine = new CorrelationEngine();
         var e = Ev(@"C:\evil\evil.exe", "defender-disabled", Severity.High, 0.8,
-            "Windows Defender real-time protection is disabled — defense evasion.", DateTime.UtcNow);
+            "Windows Defender real-time protection is disabled - defense evasion.", DateTime.UtcNow);
 
         var findings = engine.Correlate([e]);
 

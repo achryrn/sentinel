@@ -4,7 +4,7 @@ namespace Sentinel.Core.Models;
 
 /// <summary>
 /// Result of cross-checking two independent process views (Toolhelp32 vs WMI).
-/// A process visible in exactly one view is anomalous — a signature of userland
+/// A process visible in exactly one view is anomalous - a signature of userland
 /// process-hiding (rootkit artifacts) or of an instrumentation gap.
 /// </summary>
 public sealed record ProcessViewDiscrepancy

@@ -38,24 +38,24 @@ public sealed class BoolToBrushConverter : IValueConverter
         => throw new NotSupportedException();
 }
 
-/// <summary>Formats a nullable double as a percentage or "—".</summary>
+/// <summary>Formats a nullable double as a percentage or "-".</summary>
 public sealed class PercentConverter : IValueConverter
 {
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
-        => value is double d ? $"{d:0.0}%" : "—";
+        => value is double d ? $"{d:0.0}%" : "-";
 
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         => throw new NotSupportedException();
 }
 
-/// <summary>Formats a nullable long as bytes (KB/MB/GB) or "—".</summary>
+/// <summary>Formats a nullable long as bytes (KB/MB/GB) or "-".</summary>
 public sealed class BytesConverter : IValueConverter
 {
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         if (value is not long b)
         {
-            return "—";
+            return "-";
         }
         string[] units = ["B", "KB", "MB", "GB", "TB"];
         double v = b;
@@ -72,11 +72,11 @@ public sealed class BytesConverter : IValueConverter
         => throw new NotSupportedException();
 }
 
-/// <summary>Formats a UTC DateTime as local time or "—".</summary>
+/// <summary>Formats a UTC DateTime as local time or "-".</summary>
 public sealed class UtcTimeConverter : IValueConverter
 {
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
-        => value is DateTime dt ? dt.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") : "—";
+        => value is DateTime dt ? dt.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") : "-";
 
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         => throw new NotSupportedException();

@@ -4,7 +4,7 @@ using Sentinel.Core.Storage;
 namespace Sentinel.Tests;
 
 /// <summary>
-/// Store tests against a temporary SQLite database — never touches the real
+/// Store tests against a temporary SQLite database - never touches the real
 /// %ProgramData%\Sentinel\sentinel.db.
 /// </summary>
 public class SentinelStoreTests : IDisposable

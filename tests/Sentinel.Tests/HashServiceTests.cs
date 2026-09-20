@@ -39,7 +39,7 @@ public class HashServiceTests
     [Fact]
     public async Task KnownContent_MatchesReferenceHashes()
     {
-        // "abc" — NIST SHA-256/SHA-1 and RFC 1321 MD5 vectors.
+        // "abc" - NIST SHA-256/SHA-1 and RFC 1321 MD5 vectors.
         byte[] content = "abc"u8.ToArray();
         string path = TempFile(content);
         try
@@ -78,7 +78,7 @@ public class HashServiceTests
     [Fact]
     public async Task LargeFile_StreamsCorrectly()
     {
-        // 5 MiB of patterned data — exercises multi-chunk streaming.
+        // 5 MiB of patterned data - exercises multi-chunk streaming.
         var content = new byte[5 * 1024 * 1024];
         for (int i = 0; i < content.Length; i++)
         {
@@ -120,7 +120,7 @@ public class HashServiceTests
     [Fact]
     public async Task MissingFile_ThrowsFileNotFound()
     {
-        // Parent dir exists (temp), file itself does not — yields FileNotFoundException.
+        // Parent dir exists (temp), file itself does not - yields FileNotFoundException.
         string path = Path.Combine(Path.GetTempPath(), $"sentinel-missing-{Guid.NewGuid():n}.bin");
         await Assert.ThrowsAsync<FileNotFoundException>(() =>
             HashService.ComputeFileAsync(path));

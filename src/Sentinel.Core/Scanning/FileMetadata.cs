@@ -31,7 +31,7 @@ public static class FileMetadata
                     {
                         continue;
                     }
-                    // Skip the default stream "::$DATA" — it is the file itself.
+                    // Skip the default stream "::$DATA" - it is the file itself.
                     if (name.Equals("::$DATA", StringComparison.OrdinalIgnoreCase))
                     {
                         continue;

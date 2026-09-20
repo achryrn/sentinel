@@ -62,7 +62,7 @@ public class StorageRetentionTests : IDisposable
         // User marks the finding Allowed (the GUI path).
         _store.UpdateFindingStatus(id, FindingStatus.Allowed);
 
-        // A re-scan upserts with Status=New — must NOT reset the user's decision.
+        // A re-scan upserts with Status=New - must NOT reset the user's decision.
         var f3 = f1 with { OccurrenceCount = 5 };
         _store.UpsertFindingConverged(f3);
 

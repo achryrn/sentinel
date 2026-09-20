@@ -7,7 +7,7 @@ namespace Sentinel.Core.Detection;
 /// <summary>
 /// Static analysis of script content (PowerShell, batch, VBS, JScript, HTA,
 /// WSF...). Script-based infections are the most common "well hidden" malware
-/// of the last decade — fileless downloaders, encoded PowerShell, macro/script
+/// of the last decade - fileless downloaders, encoded PowerShell, macro/script
 /// droppers. This analyzer flags the classic precursor patterns with high
 /// precision and explainable evidence.
 /// </summary>
@@ -95,7 +95,7 @@ public static class ScriptAnalyzer
             || lower.Contains(" -enc ") || lower.Contains(" -e ") && HasLongToken(text))
         {
             evidence.Add(Ev(path, "script-encoded-command", Severity.High, 0.85,
-                "Script contains an encoded-command / '-enc' launch pattern — classic fileless execution.", tactics: "Execution, Defense Evasion"));
+                "Script contains an encoded-command / '-enc' launch pattern - classic fileless execution.", tactics: "Execution, Defense Evasion"));
         }
 
         // --- download cradle ---
@@ -105,7 +105,7 @@ public static class ScriptAnalyzer
             || lower.Contains("bitsadmin") || lower.Contains("certutil -urlcache"))
         {
             evidence.Add(Ev(path, "script-download-cradle", Severity.High, 0.8,
-                $"Script contains a download-and-execute cradle ({cradle} indicators) — typical malware delivery.", tactics: "Execution, Command and Control"));
+                $"Script contains a download-and-execute cradle ({cradle} indicators) - typical malware delivery.", tactics: "Execution, Command and Control"));
         }
 
         // --- execute/launch chains ---

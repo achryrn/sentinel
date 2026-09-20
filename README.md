@@ -1,10 +1,10 @@
-# Sentinel — Windows Endpoint Security Scanner
+# Sentinel: Windows Endpoint Security Scanner
 
-**Sentinel** is a Windows endpoint inspection platform written in C# / .NET 10. It scans files, processes, memory, network connections, persistence mechanisms, and system security posture, then correlates the evidence into risk-scored findings mapped to MITRE ATT&CK tactics.
+Sentinel is a Windows endpoint inspection platform that I designed and built in C# and .NET 10. It scans files, processes, memory, network connections, persistence mechanisms, and system security posture, then correlates the evidence into risk-scored findings mapped to MITRE ATT&CK tactics.
 
-> **Honest capability statement:** Sentinel is an **inspection and detection platform**, not a complete antivirus product. It does not include a kernel driver, does not hook AMSI, does not auto-execute or auto-delete files, and does not modify process memory. All detections are evidence-based and require user review. See [docs/REPORT.md](docs/REPORT.md) for the full implementation report and limitations.
+## Honest capability statement
 
----
+Sentinel is an inspection and detection platform, not a complete antivirus product. It does not include a kernel driver, does not hook AMSI, does not auto-execute or auto-delete files, and does not modify process memory. All detections are evidence-based and require user review. See [docs/REPORT.md](docs/REPORT.md) for the full implementation report and its stated limitations.
 
 ## Architecture at a glance
 
@@ -31,21 +31,21 @@ Scanner  Scanner  Scanner   Scanner       Scanner
             GUI / CLI / realtime events
 ```
 
-Every component is a library class in `Sentinel.Core`; the service, CLI, and GUI are thin hosts over the same code.
+Every component is a library class in Sentinel.Core; the service, CLI, and GUI are thin hosts over the same code.
 
 ## Projects
 
 | Project | Kind | Purpose |
 |---|---|---|
-| `Sentinel.Core` | classlib (`net10.0-windows`) | Interop, parsers, scanners, detection/correlation engines, storage, IPC, realtime monitor |
-| `Sentinel.Service` | exe | Windows service host (LocalSystem); owns the pipe server and privileged operations |
-| `Sentinel.Cli` | exe | Headless client for scripting/CI |
-| `Sentinel.Gui` | WPF exe | Unprivileged client; speaks IPC only |
-| `Sentinel.Tests` | xunit | 154 unit + integration tests |
-| `Sentinel.Core` (detection) | — | YARA-lite rule engine, AMSI scanner, script analyzer, process-chain analyzer, SHA-256 blacklist |
-| `test/SoakTest` | console | storage soak harness proving the store stays bounded under churn |
+| Sentinel.Core | classlib (net10.0-windows) | Interop, parsers, scanners, detection and correlation engines, storage, IPC, realtime monitor |
+| Sentinel.Service | exe | Windows service host (LocalSystem); owns the pipe server and privileged operations |
+| Sentinel.Cli | exe | Headless client for scripting and CI |
+| Sentinel.Gui | WPF exe | Unprivileged client; speaks IPC only |
+| Sentinel.Setup | exe | Self-contained installer and uninstaller |
+| Sentinel.Tests | xunit | 155 unit and integration tests |
+| test/SoakTest | console | Storage soak harness that proves the store stays bounded under churn |
 
-## Build & run
+## Build and run
 
 ```powershell
 # Build
@@ -72,27 +72,24 @@ dotnet run --project src/Sentinel.Gui/Sentinel.Gui.csproj
 dotnet test tests/Sentinel.Tests/Sentinel.Tests.csproj
 ```
 
-## Production build & installer
+## Production build and installer
 
-A self-contained, production-ready tree is published to `dist\Sentinel` (gitignored):
+I publish a self-contained, production-ready tree to dist\Sentinel (gitignored; rebuild with republish.ps1):
 
 ```
 dist/Sentinel/
   service\Sentinel.Service.exe   backend (Windows service, LocalSystem, auto-start)
   cli\Sentinel.Cli.exe           headless client
   gui\Sentinel.Gui.exe           WPF dashboard
-  tools\Sentinel.Setup.exe       installer/uninstaller (self-contained; runs on
-                                  any x64 Windows, self-elevates via UAC)
+  tools\Sentinel.Setup.exe       installer and uninstaller (self-contained; self-elevates via UAC)
   install.bat / uninstall.bat / run-gui.bat
-  README.txt                    quickstart
+  README.txt
 ```
 
-- **Install:** double-click `install.bat` (or `dist\Sentinel\tools\Sentinel.Setup.exe`). Accept the UAC prompt. It copies the tree to `%ProgramFiles%\Sentinel`, registers and starts the `Sentinel` service, writes Start-Menu shortcuts and the Add/Remove Programs entry.
-- **Uninstall:** `uninstall.bat` — stops/removes the service and program files; your database and quarantine are kept in `%ProgramData%\Sentinel`.
-- **Source layout rule:** `Sentinel.Setup.exe` installs the `service`, `cli` and `gui` folders that sit next to it — keep the tree intact if you redistribute it.
-- **Requirements:** .NET 10 Desktop Runtime (x64) for the framework-dependent exes; the installer binary itself bundles the runtime.
-
-Build the tree with the four publish commands in `dist\Sentinel\README.txt` (or `republish.ps1` in the repo root).
+- Install: run install.bat (or dist\Sentinel\tools\Sentinel.Setup.exe) and accept the UAC prompt. The installer copies the tree to %ProgramFiles%\Sentinel, registers and starts the Sentinel service, and writes Start Menu shortcuts and an Add/Remove Programs entry.
+- Uninstall: run uninstall.bat. It stops and removes the service and the program files. The database and quarantine are kept in %ProgramData%\Sentinel.
+- Source layout rule: Sentinel.Setup.exe installs the service, cli, and gui folders that sit next to it. Keep the tree intact if you redistribute it.
+- Requirements: .NET 10 Desktop Runtime (x64) for the framework-dependent executables; the installer binary itself bundles the runtime.
 
 ## CLI commands
 
@@ -124,85 +121,82 @@ audit                  Run system security audit
 dump <pid>             Dump process memory (admin)
 ```
 
-## GUI views (12)
+## GUI views
 
-Dashboard, Scan, Threats (findings), Processes, Network, Memory, Persistence, Files, System (audit), Events, Quarantine, Settings (exclusions).
+Dashboard, Scan, Threats (findings), Processes, Network, Memory, Persistence, Files, System (audit), Events, Quarantine, and Settings (exclusions).
 
 ## Detection rules (evidence-based)
 
-Every rule emits **evidence** (source, entity, event, severity, confidence, explanation, details). Rules never produce verdicts alone — the correlation engine combines them per entity.
+Every rule emits evidence (source, entity, event, severity, confidence, explanation, details). Rules never produce verdicts alone; the correlation engine combines them per entity.
 
-**Structural rules**
-- **File:** unsigned executable, invalid signature, untrusted signer, high entropy, RWX section, section runtime growth, overlay, TLS callbacks, no ASLR, no NX, timestamp anomaly, from-internet (Zone.Identifier), hidden/system attributes, suspicious location, **known-malware hash (blacklist)**
-- **Process:** unsigned, elevated, system-location, suspicious parent
-- **Memory:** private RWX region, high-entropy executable region, thread start outside module
-- **Network:** suspicious port, exfiltration shape (many outbound connections)
-- **Persistence:** suspicious location, startup entry
-- **System:** Defender disabled, firewall disabled, UAC disabled, stale updates, guest enabled
+Structural rules:
+- File: unsigned executable, invalid signature, untrusted signer, high entropy, RWX section, section runtime growth, overlay, TLS callbacks, no ASLR, no NX, timestamp anomaly, from-internet (Zone.Identifier), hidden or system attributes, suspicious location, known-malware hash (blacklist).
+- Process: unsigned, elevated, system-location, suspicious parent.
+- Memory: private RWX region, high-entropy executable region, thread start outside module.
+- Network: suspicious port, exfiltration shape (many outbound connections).
+- Persistence: suspicious location, startup entry.
+- System: Defender disabled, firewall disabled, UAC disabled, stale updates, guest enabled.
 
-**Content & behavioral engines (new)**
-- **YARA-lite rule engine** — `%ProgramData%\Sentinel\rules\*.rule` user rules on top of an embedded default pack (10 rules: EICAR, PowerShell download/encoded-command, mimikatz indicators, VBS/JS droppers, Cobalt-beacon indicators, HTTP beacons, batch persistence, char-code obfuscation). ASCII/wide/nocase/hex-with-? strings, and/or/not, N of, any/all.
-- **AMSI scanner** — invokes the Windows AMSI provider (amsi.dll) on scanned content (read-only; no hooking). Used as one more evidence source.
-- **Script analyzer** — PS1/BAT/VBS/JS/HTA/WSF/SCT/... heuristics: encoded commands, download cradles, execute chains, char-code/base64/split-join obfuscation, persistence hooks, credential access.
-- **Process-chain analyzer** — realtime parent/child chains (script host → network, Office → PowerShell, schtasks persistence, hidden launchers, credential tools) with a bounded 1024-PID ring.
-- **Process-view discrepancy** — compares the native (Toolhelp) process list against WMI to surface possible process hiding.
-- **SHA-256 blacklist** — `hash_blacklist` table, seeded with the EICAR hash; per-file lookup during scans.
+Content and behavioral engines:
+- YARA-lite rule engine: %ProgramData%\Sentinel\rules\*.rule user rules on top of an embedded default pack (10 rules covering EICAR, PowerShell download and encoded-command, mimikatz indicators, VBS/JS droppers, Cobalt-beacon indicators, HTTP beacons, batch persistence, and char-code obfuscation). Supports ASCII/wide/nocase/hex-with-? strings, and/or/not, N of, any of, and all.
+- AMSI scanner: invokes the Windows AMSI provider (amsi.dll) on scanned content (read-only; no hooking). It is one more evidence source.
+- Script analyzer: PS1/BAT/VBS/JS/HTA/WSF/SCT heuristics covering encoded commands, download cradles, execute chains, char-code/base64/split-join obfuscation, persistence hooks, and credential access.
+- Process-chain analyzer: realtime parent/child chains (script host to network, Office to PowerShell, schtasks persistence, hidden launchers, credential tools) with a bounded 1024-PID ring.
+- Process-view discrepancy: compares the native (Toolhelp) process list against WMI to surface possible process hiding.
+- SHA-256 blacklist: the hash_blacklist table, seeded with the EICAR hash; checked per file during scans.
 
 ## Storage
 
-SQLite at `%ProgramData%\Sentinel\sentinel.db` (service-managed; GUI/CLI never open it directly).
+SQLite at %ProgramData%\Sentinel\sentinel.db (service-managed; the GUI and CLI never open it directly).
 
-**Bounded by design** — the historic failure mode (tens of GB) is engineered out:
+Bounded by design. The historic failure mode (tens of GB) is engineered out:
+- Deterministic finding IDs: one row per entity (fnd- + SHA-256 of the entity key); re-scans converge instead of duplicating.
+- Gating: a single weak signal stays evidence; a finding only appears with two or more signals, or medium+ severity or confidence.
+- Retention caps: evidence 100k rows, events 5k, findings 200k (with 30/180-day retention by status), scan_jobs 2k, hash_cache 2M; VACUUM runs only when waste reaches 50%.
+- Streaming scans: full scans flush evidence in batches of at most 10k rows instead of holding giant in-memory lists.
+- Curated watch roots: the realtime monitor no longer watches its own database or WAL directory (the original 52 GB cause).
 
-- **Deterministic finding IDs** — one row per entity (`fnd-` + SHA-256 of the entity key); re-scans converge instead of duplicating.
-- **Gating** — a single weak signal stays *evidence*; a finding only appears with ≥ 2 signals or medium+ severity/confidence.
-- **Retention caps** — evidence 100k rows, events 5k, findings 200k (+30/180-day retention by status), scan_jobs 2k, hash_cache 2M; VACUUM only when ≥50% waste.
-- **Streaming scans** — full scans flush evidence in ≤10k batches instead of holding giant in-memory lists.
-- **Curated watch roots** — the realtime monitor no longer watches its own database/WAL directory (the original 52 GB cause).
-
-*Soak-verified:* 2-minute evidence storm + 60 s settle keeps the DB at **~2.6 MB** (was 52 GB).
+Soak-verified: a 2-minute evidence storm plus a 60-second settle keeps the DB at roughly 2.6 MB (previously 52 GB).
 
 | Table | Purpose |
 |---|---|
-| `findings` | correlated findings (converged per entity) + status |
-| `evidence` | evidence items (bounded, trimmed to 100k rows) |
-| `events` | service/realtime event log (bounded, 5k rows) |
-| `scan_jobs` | scan history (bounded, 2k rows) |
-| `hash_cache` | path → (size, lastWrite, sha256, sha1, md5, firstSeen, verdict); get-before-compute with size+LastWrite match |
-| `hash_blacklist` | known-bad SHA-256 list (seeded with EICAR) |
-| `signer_cache` | signer name → trust state |
-| `exclusions` | auditable exclusions |
-| `quarantine` | quarantine records |
+| findings | correlated findings (converged per entity) plus status |
+| evidence | evidence items (bounded, trimmed to 100k rows) |
+| events | service and realtime event log (bounded, 5k rows) |
+| scan_jobs | scan history (bounded, 2k rows) |
+| hash_cache | path to (size, lastWrite, sha256, sha1, md5, firstSeen, verdict); get-before-compute with size+LastWrite match |
+| hash_blacklist | known-bad SHA-256 list (seeded with EICAR) |
+| signer_cache | signer name to trust state |
+| exclusions | auditable exclusions |
+| quarantine | quarantine records |
 
 ## Resource profile (measured, Windows 11 x64)
 
-- **RAM (idle):** ~55 MB working set / ~17 MB private for the service — quiet enough to coexist with everything else.
-- **RAM (active scan):** peak ~250 MB working set for a 547 MB / 880-file folder scan; GC returns it to ~135 MB after the scan. Files are streamed; nothing whole-file is loaded except small PE headers and capped content buffers.
-- **CPU (idle):** ~3% of one core (event-driven realtime pumps, 2 s network poll, 60 s cleanup, 30 min posture audit).
-- **CPU (scan):** one core at BelowNormal priority — scans never make the machine feel sluggish; other apps are scheduled first.
-- **GPU:** none. The service is text-mode compute (CPU + disk); the WPF GUI uses GPU-accelerated composition only for its own windows at idle-level cost. There is no GPU work to configure.
-- **Storage (write per scan):** bounded by evidence/details caps — a 547 MB scan adds ~6 MB to the DB and the WAL checkpoints every 60 s. Per-evidence `details_json` is capped at 4 KB; an 880-file scan that previously wrote ~24 MB of scanner-report JSON now writes a few MB.
+- RAM, idle: roughly 55 MB working set and 17 MB private for the service, quiet enough to coexist with everything else.
+- RAM, active scan: peak about 250 MB working set for a 547 MB, 880-file folder scan; the GC returns it to about 135 MB after the scan. Files are streamed; nothing whole-file is loaded except small PE headers and capped content buffers.
+- CPU, idle: about 3% of one core (event-driven realtime pumps, a 2-second network poll, 60-second cleanup, and a 30-minute posture audit).
+- CPU, scan: one core at BelowNormal priority. Scans do not make the machine feel sluggish; other applications are scheduled first.
+- GPU: none. The service is text-mode compute (CPU and disk); the WPF GUI uses GPU-accelerated composition only for its own windows at idle-level cost. There is no GPU work to configure.
+- Storage written per scan: bounded by evidence and details caps. A 547 MB scan adds about 6 MB to the DB, and the WAL checkpoints every 60 seconds. Per-evidence details_json is capped at 4 KB; an 880-file scan that previously wrote about 24 MB of scanner-report JSON now writes a few MB.
 
 ## Security model
 
-- **Read-only scanning** — no process memory modification, no injection, no auto-execution, no auto-deletion, no AMSI hooking.
-- **Privileges** — the service enables the minimum broad-scope privileges needed to *inspect* a whole system (SeDebug, SeBackup, SeRestore, SeTakeOwnership, SeSecurity) and logs which ones succeeded; every read is opened with restore/backup semantics and closed immediately.
-- **Quarantine** moves files to `%ProgramData%\Sentinel\Quarantine` with metadata; restore/delete are explicit user actions.
-- **Exclusions** are auditable (type, value, scope, added-by, timestamp, rationale) and stored in SQLite.
-- **IPC** is a named pipe with JSON-lines protocol; the GUI/CLI are unprivileged clients.
-- **Dumps** are cleaned up automatically (14 days / 20 newest) by the service maintenance loop.
+- Read-only scanning: no process memory modification, no injection, no auto-execution, no auto-deletion, no AMSI hooking.
+- Privileges: the service enables the minimum broad-scope privileges needed to inspect a whole system (SeDebug, SeBackup, SeRestore, SeTakeOwnership, SeSecurity) and logs which ones succeeded; every read is opened with restore/backup semantics and closed immediately.
+- Quarantine moves files to %ProgramData%\Sentinel\Quarantine with metadata; restore and delete are explicit user actions.
+- Exclusions are auditable (type, value, scope, added-by, timestamp, rationale) and stored in SQLite.
+- IPC is a named pipe with a JSON-lines protocol; the GUI and CLI are unprivileged clients.
+- Dumps are cleaned up automatically (14 days or 20 newest) by the service maintenance loop.
 
-## Known limitations (honest)
+## Known limitations
 
-- No kernel driver — kernel-mode integrity, early-boot activity, and PPL-protected process memory are out of scope (the kernel-driver path is documented as a hard limit in docs/ARCHITECTURE.md).
-- AMSI is used as a *provider query* (scan content through the AMSI API); it is **not** hooked, so its output is one evidence source, not a realtime stream.
-- No auto-remediation; all actions require user confirmation.
-- WMI/COM availability varies by Windows SKU; collectors degrade gracefully (see `SystemAuditor`).
-- Full scans are I/O bound (SHA-256 dominates).
-- Privileged introspection requires an elevated service (console mode needs an admin shell to enable SeDebug/SeBackup/...).
+- No kernel driver. Kernel-mode integrity, early-boot activity, and PPL-protected process memory are out of scope (the kernel-driver path is documented as a hard limit in docs/ARCHITECTURE.md).
+- AMSI is used as a provider query (content is passed through the AMSI API); it is not hooked, so its output is one evidence source, not a realtime stream.
+- No auto-remediation. All actions require user confirmation.
+- WMI/COM availability varies by Windows SKU; collectors degrade gracefully (see SystemAuditor).
 
 ## Documentation
 
-- [docs/RESEARCH.md](docs/RESEARCH.md) — technical research (Windows internals, PE/COFF, Authenticode, MITRE ATT&CK, AMSI, Sysinternals)
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — architecture and data model
-- [docs/REPORT.md](docs/REPORT.md) — final 16-section implementation report
+- [docs/RESEARCH.md](docs/RESEARCH.md): technical research on Windows internals, PE/COFF, Authenticode, MITRE ATT&CK, AMSI, and related tooling.
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): architecture and data model.
+- [docs/REPORT.md](docs/REPORT.md): the final 16-section implementation report.

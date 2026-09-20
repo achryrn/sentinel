@@ -33,7 +33,7 @@ public partial class DashboardView : UserControl, IRefreshable
             }
 
             var findings = await _client.RequestAsync<List<StoredFinding>>(IpcCommand.GetFindings, new { Limit = 200, MinSeverity = Severity.Info });
-            FindingsStat.Text = findings?.Count.ToString() ?? "—";
+            FindingsStat.Text = findings?.Count.ToString() ?? "-";
             var critical = findings?.Count(f => f.Severity >= Severity.High) ?? 0;
             FindingsSub.Text = critical > 0 ? $"{critical} high/critical" : "no high severity";
 
@@ -43,7 +43,7 @@ public partial class DashboardView : UserControl, IRefreshable
             QuarantineSub.Text = quarantine is null ? "not loaded" : $"{quarantine.Count} total records";
 
             var realtime = await _client.RequestAsync<List<RealtimeEvent>>(IpcCommand.GetRealtimeEvents);
-            RealtimeStat.Text = realtime?.Count.ToString() ?? "—";
+            RealtimeStat.Text = realtime?.Count.ToString() ?? "-";
             RealtimeSub.Text = "last 500 buffered";
 
             // Live posture from a fresh system audit

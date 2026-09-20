@@ -19,28 +19,28 @@
                 <Border Grid.Column="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="16,14">
                     <StackPanel>
                         <TextBlock Text="Findings" Foreground="{StaticResource DimTextBrush}" FontSize="12"/>
-                        <TextBlock x:Name="FindingsStat" Text="—" FontSize="28" FontWeight="Bold"/>
+                        <TextBlock x:Name="FindingsStat" Text="-" FontSize="28" FontWeight="Bold"/>
                         <TextBlock x:Name="FindingsSub" Text="not loaded" Foreground="{StaticResource DimTextBrush}" FontSize="11"/>
                     </StackPanel>
                 </Border>
                 <Border Grid.Column="2" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="16,14">
                     <StackPanel>
                         <TextBlock Text="Quarantined" Foreground="{StaticResource DimTextBrush}" FontSize="12"/>
-                        <TextBlock x:Name="QuarantineStat" Text="—" FontSize="28" FontWeight="Bold"/>
+                        <TextBlock x:Name="QuarantineStat" Text="-" FontSize="28" FontWeight="Bold"/>
                         <TextBlock x:Name="QuarantineSub" Text="not loaded" Foreground="{StaticResource DimTextBrush}" FontSize="11"/>
                     </StackPanel>
                 </Border>
                 <Border Grid.Column="4" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="16,14">
                     <StackPanel>
                         <TextBlock Text="Realtime events" Foreground="{StaticResource DimTextBrush}" FontSize="12"/>
-                        <TextBlock x:Name="RealtimeStat" Text="—" FontSize="28" FontWeight="Bold"/>
+                        <TextBlock x:Name="RealtimeStat" Text="-" FontSize="28" FontWeight="Bold"/>
                         <TextBlock x:Name="RealtimeSub" Text="not loaded" Foreground="{StaticResource DimTextBrush}" FontSize="11"/>
                     </StackPanel>
                 </Border>
                 <Border Grid.Column="6" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="16,14">
                     <StackPanel>
                         <TextBlock Text="Service" Foreground="{StaticResource DimTextBrush}" FontSize="12"/>
-                        <TextBlock x:Name="ServiceStat" Text="—" FontSize="28" FontWeight="Bold"/>
+                        <TextBlock x:Name="ServiceStat" Text="-" FontSize="28" FontWeight="Bold"/>
                         <TextBlock x:Name="ServiceSub" Text="not loaded" Foreground="{StaticResource DimTextBrush}" FontSize="11"/>
                     </StackPanel>
                 </Border>
@@ -56,19 +56,19 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0">
                             <TextBlock Text="Defender" Foreground="{StaticResource DimTextBrush}" FontSize="12"/>
-                            <TextBlock x:Name="DefenderStat" Text="—" FontSize="16" FontWeight="SemiBold"/>
+                            <TextBlock x:Name="DefenderStat" Text="-" FontSize="16" FontWeight="SemiBold"/>
                         </StackPanel>
                         <StackPanel Grid.Column="1">
                             <TextBlock Text="Firewall" Foreground="{StaticResource DimTextBrush}" FontSize="12"/>
-                            <TextBlock x:Name="FirewallStat" Text="—" FontSize="16" FontWeight="SemiBold"/>
+                            <TextBlock x:Name="FirewallStat" Text="-" FontSize="16" FontWeight="SemiBold"/>
                         </StackPanel>
                         <StackPanel Grid.Column="2">
                             <TextBlock Text="UAC" Foreground="{StaticResource DimTextBrush}" FontSize="12"/>
-                            <TextBlock x:Name="UacStat" Text="—" FontSize="16" FontWeight="SemiBold"/>
+                            <TextBlock x:Name="UacStat" Text="-" FontSize="16" FontWeight="SemiBold"/>
                         </StackPanel>
                         <StackPanel Grid.Column="3">
                             <TextBlock Text="Last audit" Foreground="{StaticResource DimTextBrush}" FontSize="12"/>
-                            <TextBlock x:Name="AuditStat" Text="—" FontSize="16" FontWeight="SemiBold"/>
+                            <TextBlock x:Name="AuditStat" Text="-" FontSize="16" FontWeight="SemiBold"/>
                         </StackPanel>
                     </Grid>
                 </StackPanel>

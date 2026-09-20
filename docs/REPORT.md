@@ -1,6 +1,6 @@
-# Sentinel — Final Implementation Report
+# Sentinel: Final Implementation Report
 
-**Product:** Sentinel — Windows endpoint security inspection platform
+**Product:** Sentinel: Windows endpoint security inspection platform
 **Date:** 2026-08-08
 **Stack:** C# / .NET 10 (`net10.0-windows`), WPF GUI, Win32 interop (`LibraryImport`), SQLite (Microsoft.Data.Sqlite)
 **Status:** All acceptance criteria met; 123/123 tests passing; E2E verified against a live service.
@@ -25,11 +25,11 @@ The product is delivered as a solution of five projects:
 
 ## 2. Honest Capability Statement
 
-**Sentinel is an inspection and detection platform — it is NOT a complete antivirus product.** Specifically:
+**Sentinel is an inspection and detection platform: it is NOT a complete antivirus product.** Specifically:
 
-- ✅ **What it does:** read-only scanning of files (static analysis, PE structure, Authenticode signatures, entropy, streams), live processes (modules, threads, memory regions, tokens), network sockets (per-process TCP/UDP), persistence (registry, startup folders, scheduled tasks, services), and system security posture (Defender, firewall, UAC, updates, accounts, exposure). It correlates evidence into findings with risk scores and MITRE ATT&CK tactic tags, and provides quarantine (explicit user action) and auditable exclusions.
-- ❌ **What it does NOT do:** no kernel driver, no AMSI hooking, no auto-execution of suspicious files, no process memory modification during scanning, no injection, no auto-deletion, no auto-remediation, no real-time blocking. All actions require user confirmation.
-- ⚠️ **Detection quality:** detections are *signals*, not verdicts. A single weak signal (e.g., an unsigned executable) is reported as low-severity evidence; only correlated evidence produces findings. False positives are mitigated by signer/path trust, exclusions, and confidence scoring — but they remain possible, and the UI is designed for human review.
+- **What it does:** read-only scanning of files (static analysis, PE structure, Authenticode signatures, entropy, streams), live processes (modules, threads, memory regions, tokens), network sockets (per-process TCP/UDP), persistence (registry, startup folders, scheduled tasks, services), and system security posture (Defender, firewall, UAC, updates, accounts, exposure). It correlates evidence into findings with risk scores and MITRE ATT&CK tactic tags, and provides quarantine (explicit user action) and auditable exclusions.
+- **What it does not do:** no kernel driver, no AMSI hooking, no auto-execution of suspicious files, no process memory modification during scanning, no injection, no auto-deletion, no auto-remediation, no real-time blocking. All actions require user confirmation.
+- **Detection quality:** detections are *signals*, not verdicts. A single weak signal (e.g., an unsigned executable) is reported as low-severity evidence; only correlated evidence produces findings. False positives are mitigated by signer/path trust, exclusions, and confidence scoring: but they remain possible, and the UI is designed for human review.
 
 ---
 
@@ -41,11 +41,11 @@ Research was completed first and documented in `docs/RESEARCH.md`. Key reference
 |---|---|
 | **MITRE ATT&CK** | Behavioral reference for detection rules; every finding carries tactic tags (Execution, Persistence, Privilege Escalation, Defense Evasion, Credential Access, Discovery, Lateral Movement, Collection, Command and Control, Exfiltration, Impact, Initial Access) |
 | **Microsoft AMSI** | Documented as the integration point for future real-time scanning (see §16). AMSI is a scan *integration* interface, not a scanner itself; no AMSI code is present in this build |
-| **Sysinternals** | Inspection reference: Process Explorer (process/module/memory views), TCPView (per-process sockets), Autoruns (persistence breadth), Sigcheck (signature verification) — the scanner breadth mirrors these tools |
+| **Sysinternals** | Inspection reference: Process Explorer (process/module/memory views), TCPView (per-process sockets), Autoruns (persistence breadth), Sigcheck (signature verification): the scanner breadth mirrors these tools |
 | **Sysmon** | Telemetry event catalog reference for the realtime event model |
 | **Win32 documentation** | Toolhelp32, IP Helper (GetExtendedTcpTable/UdpTable), VirtualQueryEx, Wintrust/Authenticode, Registry, WMI (System.Management), Windows Update COM |
 
-**Methodology:** layered evidence pipeline — data collection (scanners) → evidence normalization (DetectionEngine rules) → entity correlation (CorrelationEngine) → risk scoring (RiskAssessor) → persistence → UI/report. Every rule emits structured evidence with severity, confidence, explanation, and details; rules never produce verdicts alone.
+**Methodology:** layered evidence pipeline: data collection (scanners) → evidence normalization (DetectionEngine rules) → entity correlation (CorrelationEngine) → risk scoring (RiskAssessor) → persistence → UI/report. Every rule emits structured evidence with severity, confidence, explanation, and details; rules never produce verdicts alone.
 
 ---
 
@@ -82,12 +82,12 @@ Scanner  Scanner  Scanner   Scanner       Scanner
 
 ## 5. Data Model & Storage (SQLite)
 
-- **`Evidence`** — one observation: `Source` (file/process/memory/network/persistence/system), `Timestamp`, `EntityType` + `EntityId` (file path | pid | connection key | persistence key | system), `Event` (rule name), `Severity` (Info..Critical), `Confidence` (0..1), `Explanation`, `Details` (JSON), `RelatedEvidenceIds`.
-- **`Finding`** — correlated conclusion: `EvidenceIds`, `EntityKey`, `Title`, `Severity`, `Confidence`, `Reasons[]`, `MitreTactics[]`, `RecommendedAction`, `Status` (New/Reviewed/Allowed/Quarantined), `RiskScore`.
-- **`ScanJob`** — scan run record: mode, targets, exclusions, progress, timestamps, result summary.
+- **`Evidence`**: one observation: `Source` (file/process/memory/network/persistence/system), `Timestamp`, `EntityType` + `EntityId` (file path | pid | connection key | persistence key | system), `Event` (rule name), `Severity` (Info..Critical), `Confidence` (0..1), `Explanation`, `Details` (JSON), `RelatedEvidenceIds`.
+- **`Finding`**: correlated conclusion: `EvidenceIds`, `EntityKey`, `Title`, `Severity`, `Confidence`, `Reasons[]`, `MitreTactics[]`, `RecommendedAction`, `Status` (New/Reviewed/Allowed/Quarantined), `RiskScore`.
+- **`ScanJob`**: scan run record: mode, targets, exclusions, progress, timestamps, result summary.
 - **Scanner outputs:** `FileReport`, `ProcessInfo`, `MemoryAnalysisResult`, `NetworkSnapshot`, `PersistenceEntry`, `SystemAuditResult`.
-- **`Exclusion`** — auditable: type (Path/Hash/Signer), value, scope, added-by, timestamp, rationale.
-- **`QuarantineRecord`** — original path, hashes, times, reason, status.
+- **`Exclusion`**: auditable: type (Path/Hash/Signer), value, scope, added-by, timestamp, rationale.
+- **`QuarantineRecord`**: original path, hashes, times, reason, status.
 
 **Database:** SQLite at `%ProgramData%\Sentinel\sentinel.db` (service-managed).
 
@@ -99,9 +99,9 @@ Scanner  Scanner  Scanner   Scanner       Scanner
 | `scan_jobs` | scan history | cap 2k rows |
 | `hash_cache` | path → (size, lastWrite, sha256, sha1, md5, firstSeen, verdict) | cap 2M rows; get-before-compute |
 | `hash_blacklist` | known-bad SHA-256 (seeded with EICAR) | small |
-| `signer_cache` | signer name → trust state, observed count | — |
-| `exclusions` | auditable exclusions | — |
-| `quarantine` | quarantine records | — |
+| `signer_cache` | signer name → trust state, observed count | n/a |
+| `exclusions` | auditable exclusions | n/a |
+| `quarantine` | quarantine records | n/a |
 
 **The 52 GB incident, root cause and fix (this hardening round):**
 
@@ -109,16 +109,16 @@ Scanner  Scanner  Scanner   Scanner       Scanner
 2. *The realtime monitor watched its own database/WAL directory.* Every WAL write changed the directory → an event → more evidence → more writes → a feedback loop. Fixed by curating watch roots (startup locations only), evidence-kind filtering, batched writes, and caps with retention.
 3. *Unbounded caches and logs.* `hash_cache`, `events`, `scan_jobs`, and `findings` now all have explicit caps plus an age-based retention pass; VACUUM runs only at ≥ 50% waste; dumps are trimmed.
 
-**Verified:** the `test/SoakTest` harness storms the store for ~2 minutes then settles — the database stays at **~2.6 MB** (bounded), and the EICAR E2E run keeps `sentinel.db` at **~0.35 MB** after repeated rescans plus live realtime monitoring.
+**Verified:** the `test/SoakTest` harness storms the store for ~2 minutes then settles: the database stays at **~2.6 MB** (bounded), and the EICAR E2E run keeps `sentinel.db` at **~0.35 MB** after repeated rescans plus live realtime monitoring.
 
-**Follow-up regression found & fixed during resource measurement:** the first run of an 880-file (547 MB) folder scan grew the store to **54 MB** — `details_json` was embedding the *full* scan report per evidence row (complete PE import/export tables, avg ~12 KB, up to 111 KB per row). Fixed at two layers: `DetectionEngine.CapDetailsJson` (4 KB cap, valid-JSON summary keeps the head) and a store-side cap on every insert. The same scan now produces a **~6.4 MB DB** (+ ~8 MB transient WAL, checkpointed every 60 s). Covered by regression test `CapDetailsJson_BoundsOversizedPayload_KeepsValidJson`.
+**Follow-up regression found & fixed during resource measurement:** the first run of an 880-file (547 MB) folder scan grew the store to **54 MB**: `details_json` was embedding the *full* scan report per evidence row (complete PE import/export tables, avg ~12 KB, up to 111 KB per row). Fixed at two layers: `DetectionEngine.CapDetailsJson` (4 KB cap, valid-JSON summary keeps the head) and a store-side cap on every insert. The same scan now produces a **~6.4 MB DB** (+ ~8 MB transient WAL, checkpointed every 60 s). Covered by regression test `CapDetailsJson_BoundsOversizedPayload_KeepsValidJson`.
 
 **Measured resource profile (Windows 11 x64, service process):**
 
 | Sector | Idle | Active scan (547 MB / 880 files) |
 |---|---|---|
 | RAM | ~55 MB working set / ~17 MB private | peak ~250 MB working set, falls back to ~135 MB after |
-| CPU | ~3% of one core | one core, **BelowNormal priority** (new — scans yield to interactive work) |
+| CPU | ~3% of one core | one core, **BelowNormal priority** (new: scans yield to interactive work) |
 | GPU | 0 (service is CPU/disk text-mode compute) | 0 |
 | Storage | no writes; 60 s cleanup, 30 min audit | ~6.4 MB DB + transient WAL; caps + details cap prevent growth |
 | Disk I/O during scan | none | sequential single-threaded reads; no throttle by design (priority handles responsiveness) |
@@ -134,7 +134,7 @@ Scanner  Scanner  Scanner   Scanner       Scanner
 
 ## 7. Process Scanner
 
-- **Enumeration:** `CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS)` + `Process32FirstW/NextW` (Unicode structs — a real bug was found and fixed here: missing `CharSet.Unicode` on `PROCESSENTRY32W` caused `ERROR_BAD_LENGTH` and empty lists).
+- **Enumeration:** `CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS)` + `Process32FirstW/NextW` (Unicode structs: a real bug was found and fixed here: missing `CharSet.Unicode` on `PROCESSENTRY32W` caused `ERROR_BAD_LENGTH` and empty lists).
 - **Per process:** PID, name, path, session, parent PID (WMI `Win32_Process`), modules (per-process `TH32CS_SNAPMODULE`), threads, integrity/elevation, signature status, hash (on demand).
 - **Access:** `OpenProcess` with `PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_QUERY_INFORMATION | PROCESS_VM_READ`; graceful degradation when access is denied (system processes, PPL).
 - **Evidence:** unsigned, elevated, system-location, suspicious parent.
@@ -142,14 +142,14 @@ Scanner  Scanner  Scanner   Scanner       Scanner
 ## 8. Memory Scanner
 
 - **Per process:** `VirtualQueryEx` region walk; region classification (private/committed/executable), RWX detection, entropy of executable regions, thread start addresses vs. module ranges (`Thread32First/Next` + module base/end), access-denied tracking.
-- **Explicitly read-only:** no memory modification, no injection, no writes — scanning only.
+- **Explicitly read-only:** no memory modification, no injection, no writes: scanning only.
 - **Evidence:** private RWX region (potential injected shellcode), high-entropy executable region, thread start outside module.
 
 ## 9. Network Scanner
 
 - **Capture:** `GetExtendedTcpTable`/`GetExtendedUdpTable` (IPv4 + IPv6) with `TCP_TABLE_OWNER_PID_ALL`/`UDP_TABLE_OWNER_PID`; per-connection owning PID mapped to process names.
-- **Note:** a real bug was found and fixed here — the table header `dwNumEntries` is a 4-byte DWORD, but the code advanced the pointer by `IntPtr.Size` (8 bytes on x64), scrambling every row. Fixed to `buf + 4`.
-- **Output:** local/remote address+port, state (TCP state names 1–12), PID, process name, listening vs. established, loopback vs. public.
+- **Note:** a real bug was found and fixed here: the table header `dwNumEntries` is a 4-byte DWORD, but the code advanced the pointer by `IntPtr.Size` (8 bytes on x64), scrambling every row. Fixed to `buf + 4`.
+- **Output:** local/remote address+port, state (TCP state names 1-12), PID, process name, listening vs. established, loopback vs. public.
 - **Evidence:** suspicious port, exfiltration shape (many outbound connections).
 
 ## 10. Persistence Scanner
@@ -169,25 +169,25 @@ Read-only security posture audit:
 - **Accounts:** local Administrators membership, Guest state.
 - **Exposure:** RDP, SMB, public listening ports (from the network snapshot).
 
-*E2E note:* the audit pipeline was verified against a live Windows 11 machine — OS build 26200, Defender all-on, firewall enabled with 517 rules, UAC level 5, 2 admins, updates current. Three real-world bugs were found and fixed during E2E (see §15).
+*E2E note:* the audit pipeline was verified against a live Windows 11 machine: OS build 26200, Defender all-on, firewall enabled with 517 rules, UAC level 5, 2 admins, updates current. Three real-world bugs were found and fixed during E2E (see §15).
 
 ## 12. Detection Engine (Rules)
 
-Every rule is a pure function `(scanner output) → Evidence?`. Rules never produce verdicts alone. 40+ structural rules across six sources (see §6–§11) plus four content/behavioral engines (new in this hardening round):
+Every rule is a pure function `(scanner output) → Evidence?`. Rules never produce verdicts alone. 40+ structural rules across six sources (see §6-§11) plus four content/behavioral engines (new in this hardening round):
 
-- **YARA-lite rule engine** (`RuleEngine`) — parses a YARA subset (meta/strings/condition; ascii, wide, nocase, hex-with-`?`; `and`/`or`/`not`, `N of`, `any of`). Default pack of 10 rules embedded; user rules auto-load from `%ProgramData%\Sentinel\rules\*.rule`. Robustness: unparseable constructs (regex strings, unknown sections) skip that rule only — the pack survives. Byte matching limits at 8 MiB per file.
-- **AMSI scanner** (`AmsiScanner`) — P/Invoke against amsi.dll (`AmsiInitialize`/`AmsiScanBuffer`); verdict ≥ 0x4000 (blocked by admin) counts as *Detected* evidence. Read-only provider query, not a hook. Availability is probed once and reported (unavailable → silently skipped).
-- **Script analyzer** (`ScriptAnalyzer`) — heuristics over script/office-ish text formats: encoded commands (`-enc`/`FromBase64String`), download cradles (`IEX(New-Object Net.WebClient).DownloadString`), execute chains, char-code assembly (`chr(`-heavy), base64/split-join obfuscation, persistence hooks (Run keys, schtasks), credential access (mimikatz, `net user`, `Get-Credential`). Latin-1/UTF-16/UTF-8 decoding; 4 MiB cap; extension gate widened to include small `.txt`/`.com`/`.scr` (EICAR tests and disguised payloads).
-- **Process-chain analyzer** (`ProcessChainAnalyzer`) — realtime parent→child chain rules with a bounded 1024-PID ring: encoded launch, download cradle → network child, hidden launcher, credential tool (Critical), script-host child, Office→PowerShell child, schtasks persistence. Fires on the *chain*, not a single process.
-- **Process-view discrepancy** — Toolhelp (native) vs WMI PID comparison: native-only PIDs → High `process-hidden-from-wmi` (rootkit artifact candidate); WMI-only → Low race note. Runs on a bounded poll inside the realtime loop.
-- **SHA-256 blacklist** — `hash_blacklist` table, seeded with the EICAR hash; every scanned file is checked before hashing (hash cache miss path), producing `known-malware-hash` (Critical 0.98) evidence and a report note. Mutable at runtime (`blacklist --add/--remove`).
+- **YARA-lite rule engine** (`RuleEngine`): parses a YARA subset (meta/strings/condition; ascii, wide, nocase, hex-with-`?`; `and`/`or`/`not`, `N of`, `any of`). Default pack of 10 rules embedded; user rules auto-load from `%ProgramData%\Sentinel\rules\*.rule`. Robustness: unparseable constructs (regex strings, unknown sections) skip that rule only: the pack survives. Byte matching limits at 8 MiB per file.
+- **AMSI scanner** (`AmsiScanner`): P/Invoke against amsi.dll (`AmsiInitialize`/`AmsiScanBuffer`); verdict ≥ 0x4000 (blocked by admin) counts as *Detected* evidence. Read-only provider query, not a hook. Availability is probed once and reported (unavailable → silently skipped).
+- **Script analyzer** (`ScriptAnalyzer`): heuristics over script/office-ish text formats: encoded commands (`-enc`/`FromBase64String`), download cradles (`IEX(New-Object Net.WebClient).DownloadString`), execute chains, char-code assembly (`chr(`-heavy), base64/split-join obfuscation, persistence hooks (Run keys, schtasks), credential access (mimikatz, `net user`, `Get-Credential`). Latin-1/UTF-16/UTF-8 decoding; 4 MiB cap; extension gate widened to include small `.txt`/`.com`/`.scr` (EICAR tests and disguised payloads).
+- **Process-chain analyzer** (`ProcessChainAnalyzer`): realtime parent→child chain rules with a bounded 1024-PID ring: encoded launch, download cradle → network child, hidden launcher, credential tool (Critical), script-host child, Office→PowerShell child, schtasks persistence. Fires on the *chain*, not a single process.
+- **Process-view discrepancy**: Toolhelp (native) vs WMI PID comparison: native-only PIDs → High `process-hidden-from-wmi` (rootkit artifact candidate); WMI-only → Low race note. Runs on a bounded poll inside the realtime loop.
+- **SHA-256 blacklist**: `hash_blacklist` table, seeded with the EICAR hash; every scanned file is checked before hashing (hash cache miss path), producing `known-malware-hash` (Critical 0.98) evidence and a report note. Mutable at runtime (`blacklist --add/--remove`).
 
-EICAR E2E proof (this machine): scanning `test/eicar-test.txt` produced a **Critical finding (risk 100.0, conf 1.00)** with three independent evidence sources — `rule-eicar_test_file`, `amsi-detected`, `known-malware-hash`. Re-scans converge to a single finding row.
+EICAR E2E proof (this machine): scanning `test/eicar-test.txt` produced a **Critical finding (risk 100.0, conf 1.00)** with three independent evidence sources: `rule-eicar_test_file`, `amsi-detected`, `known-malware-hash`. Re-scans converge to a single finding row.
 
 ## 13. Correlation Engine & Risk Scoring
 
 - **Correlation:** evidence is grouped by entity (file path, PID, connection key, persistence key, system) within a 60-second window; distinct signals per entity are combined into a `Finding` with max severity, confidence `min(1, 0.3 + Σconf·0.35)`, deduplicated reasons, MITRE tactic tags, and a recommended action (immediate review / review / informational).
-- **Gating (storage fix):** a finding is created only when the entity has ≥ 2 distinct signals, or max severity ≥ Medium, or max confidence ≥ 0.75. A single weak signal (unsigned exe, MOTW, no-ASLR) stays *evidence* — it is not a verdict and no longer floods the findings table.
+- **Gating (storage fix):** a finding is created only when the entity has ≥ 2 distinct signals, or max severity ≥ Medium, or max confidence ≥ 0.75. A single weak signal (unsigned exe, MOTW, no-ASLR) stays *evidence*: it is not a verdict and no longer floods the findings table.
 - **Deterministic finding IDs:** `fnd-` + SHA-256(`sentinel-finding:` + entity key). One row per entity even across scans, sessions, and service restarts; `UpsertFindingConverged` preserves user status (New/Allowed/Quarantined) and accumulates occurrence counts. This is the core de-duplication: the same file found 100 times creates 1 row, not 100.
 - **Risk scoring:** `RiskAssessor` computes a weighted score from evidence severities and event weights; findings are stored with `risk_score` and listed highest-first.
 
@@ -224,46 +224,46 @@ EICAR E2E proof (this machine): scanning `test/eicar-test.txt` produced a **Crit
 
 | Check | Result |
 |---|---|
-| Process scan | ✅ real process list with PIDs/names/parents |
-| Memory scan | ✅ regions/suspicious/threads/denied per process |
-| Network scan | ✅ real TCP/UDP addresses, PIDs, process names |
-| Findings | ✅ severity/score/entity/action/tactics |
-| Persistence | ✅ startup folders, winlogon, scheduled tasks |
-| Events | ✅ realtime file-modified events |
-| Audit | ✅ OS/Defender/firewall/UAC/admins/updates all real values |
-| Quarantine/exclusions/evidence | ✅ list/add/remove/evidence-by-entity |
-| GUI | ✅ launches, connects via IPC, all 12 views load |
-| Build | ✅ 0 errors |
-| Storage soak | ✅ 2-minute event storm + 60 s settle → DB stays **2.6 MB** (bounded; the historical failure was 52 GB) |
-| EICAR (new engines) | ✅ `scan test/eicar-test.txt` → **Critical finding (conf 1.00)** from 3 engines: `rule-eicar_test_file`, `amsi-detected`, `known-malware-hash` |
-| Finding convergence | ✅ 3 re-scans of the same file produce **1 finding row** (deterministic id + converged upsert) |
-| Batch-writer/cleaner race | ✅ soak exposed a pending-transaction race (`InsertBatchAsync` vs cleaner); serialized under the single-writer lock and re-verified |
+| Process scan | Pass: real process list with PIDs/names/parents |
+| Memory scan | Pass: regions/suspicious/threads/denied per process |
+| Network scan | Pass: real TCP/UDP addresses, PIDs, process names |
+| Findings | Pass: severity/score/entity/action/tactics |
+| Persistence | Pass: startup folders, winlogon, scheduled tasks |
+| Events | Pass: realtime file-modified events |
+| Audit | Pass: OS/Defender/firewall/UAC/admins/updates all real values |
+| Quarantine/exclusions/evidence | Pass: list/add/remove/evidence-by-entity |
+| GUI | Pass: launches, connects via IPC, all 12 views load |
+| Build | Pass: 0 errors |
+| Storage soak | Pass: 2-minute event storm + 60 s settle → DB stays **2.6 MB** (bounded; the historical failure was 52 GB) |
+| EICAR (new engines) | Pass: `scan test/eicar-test.txt` → **Critical finding (conf 1.00)** from 3 engines: `rule-eicar_test_file`, `amsi-detected`, `known-malware-hash` |
+| Finding convergence | Pass: 3 re-scans of the same file produce **1 finding row** (deterministic id + converged upsert) |
+| Batch-writer/cleaner race | Pass: soak exposed a pending-transaction race (`InsertBatchAsync` vs cleaner); serialized under the single-writer lock and re-verified |
 
 **Bugs found & fixed during E2E (all verified):**
 
-1. **Process scan empty** — `CreateToolhelp32Snapshot` used `TH32CS_SNAPPROCESS | TH32CS_SNAPMODULE` with PID 0 (SNAPMODULE requires a valid PID → invalid handle). Fixed to `TH32CS_SNAPPROCESS`.
-2. **Process scan still empty (root cause)** — `PROCESSENTRY32W`/`MODULEENTRY32W`/`WIN32_FIND_STREAM_DATA` missing `CharSet.Unicode` → `ByValTStr SizeConst=260` marshaled as 260 ANSI bytes (304-byte struct) instead of 520 UTF-16 bytes (556-byte struct) → `Process32FirstW` rejected with `ERROR_BAD_LENGTH`. Fixed by adding `CharSet = CharSet.Unicode`.
-3. **Network tables malformed** — all four capture methods advanced `buf + IntPtr.Size` (8 bytes) but the table header `dwNumEntries` is 4 bytes → every row read 4 bytes off. Fixed to `buf + 4`.
-4. **GetFindings double-wrapped** — `IpcMessages.Response(request.Id, GetFindings(request))` where `GetFindings` already returns a Response → payload was an object, not the findings array. Fixed.
-5. **Audit empty values** — the collect methods did `r = r with {...}` on a by-value parameter, silently discarding changes. Fixed by returning `SystemAuditResult` from each and assigning in `Audit()`.
-6. **Audit: firewall COM** — `FirewallEnabled[0]` indexer threw `E_INVALIDARG`; fixed to method-call syntax with correct profile values (1=Domain, 2=Private, 4=Public).
-7. **Audit: Defender WMI** — `ProductState` property missing on this build (threw `ManagementException` killing the collector); `AntivirusSignatureLastUpdated` is a CIM datetime string, not `DateTime`. Fixed with `SafeGet` guards, `ProductStatus`, and `ManagementDateTimeConverter`.
-8. **Audit: updates missing** — `LastUpdateInstalledUtc` was never collected; WU WMI namespace absent on this machine. Added `CollectUpdates` using the Windows Update COM API.
+1. **Process scan empty**: `CreateToolhelp32Snapshot` used `TH32CS_SNAPPROCESS | TH32CS_SNAPMODULE` with PID 0 (SNAPMODULE requires a valid PID → invalid handle). Fixed to `TH32CS_SNAPPROCESS`.
+2. **Process scan still empty (root cause)**: `PROCESSENTRY32W`/`MODULEENTRY32W`/`WIN32_FIND_STREAM_DATA` missing `CharSet.Unicode` → `ByValTStr SizeConst=260` marshaled as 260 ANSI bytes (304-byte struct) instead of 520 UTF-16 bytes (556-byte struct) → `Process32FirstW` rejected with `ERROR_BAD_LENGTH`. Fixed by adding `CharSet = CharSet.Unicode`.
+3. **Network tables malformed**: all four capture methods advanced `buf + IntPtr.Size` (8 bytes) but the table header `dwNumEntries` is 4 bytes → every row read 4 bytes off. Fixed to `buf + 4`.
+4. **GetFindings double-wrapped**: `IpcMessages.Response(request.Id, GetFindings(request))` where `GetFindings` already returns a Response → payload was an object, not the findings array. Fixed.
+5. **Audit empty values**: the collect methods did `r = r with {...}` on a by-value parameter, silently discarding changes. Fixed by returning `SystemAuditResult` from each and assigning in `Audit()`.
+6. **Audit: firewall COM**: `FirewallEnabled[0]` indexer threw `E_INVALIDARG`; fixed to method-call syntax with correct profile values (1=Domain, 2=Private, 4=Public).
+7. **Audit: Defender WMI**: `ProductState` property missing on this build (threw `ManagementException` killing the collector); `AntivirusSignatureLastUpdated` is a CIM datetime string, not `DateTime`. Fixed with `SafeGet` guards, `ProductStatus`, and `ManagementDateTimeConverter`.
+8. **Audit: updates missing**: `LastUpdateInstalledUtc` was never collected; WU WMI namespace absent on this machine. Added `CollectUpdates` using the Windows Update COM API.
 
 ## 16. Limitations & Future Work
 
 **Known limitations (honest):**
-- No kernel driver — kernel-mode integrity, early-boot activity, PPL-protected process memory, and rootkit-hidden artifacts are out of scope.
-- AMSI is **provider-queried** (content pushed through amsi.dll with one call per buffer) but **not hooked** — realtime script/office interception remains future work; as a query it is one evidence source, not a stream.
+- No kernel driver: kernel-mode integrity, early-boot activity, PPL-protected process memory, and rootkit-hidden artifacts are out of scope.
+- AMSI is **provider-queried** (content pushed through amsi.dll with one call per buffer) but **not hooked**: realtime script/office interception remains future work; as a query it is one evidence source, not a stream.
 - Privileged introspection needs an elevated service; in console mode an admin shell is required to enable SeDebug/SeBackup/SeRestore/SeTakeOwnership/SeSecurity. Partial grants are logged and degrade gracefully.
-- No auto-remediation — quarantine/terminate/delete are explicit user actions only.
+- No auto-remediation: quarantine/terminate/delete are explicit user actions only.
 - WMI/COM availability varies by Windows SKU; collectors degrade gracefully (documented in `SystemAuditor`).
 - Full scans are I/O bound (SHA-256 dominates); no incremental scan resume.
-- Findings are signals, not verdicts — false positives are possible and the UI is designed for human review.
+- Findings are signals, not verdicts: false positives are possible and the UI is designed for human review.
 
 **Future work:**
 - AMSI hooking / realtime script+office interception (the AMSI query path exists; the hook is deliberately not part of this read-only build).
-- Kernel-mode integrity checks (requires a driver — explicitly out of scope for this build).
+- Kernel-mode integrity checks (requires a driver: explicitly out of scope for this build).
 - ETW-based telemetry (Sysmon-style event catalog).
 - Cloud hash lookup (VirusTotal-style) with privacy controls.
 - Scheduled scans and alerting (email/webhook).
@@ -271,4 +271,4 @@ EICAR E2E proof (this machine): scanning `test/eicar-test.txt` produced a **Crit
 
 ---
 
-*This report is honest about what Sentinel is and is not. It is a research-grade, evidence-based Windows endpoint inspection platform — not a complete antivirus product.*
+*This report is honest about what Sentinel is and is not. It is a research-grade, evidence-based Windows endpoint inspection platform: not a complete antivirus product.*

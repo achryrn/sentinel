@@ -18,7 +18,7 @@ public sealed record ChainProcess
 /// <summary>
 /// Behavioral process-chain analysis: watches process creation and builds a
 /// bounded process tree to catch the "well hidden" script/command-line style
-/// attacks that static file scanning never sees — Office → PowerShell cradles,
+/// attacks that static file scanning never sees - Office → PowerShell cradles,
 /// encoded launches, hidden windows, credential tooling. Reads only the event
 /// stream; never touches the processes. Bounded ring: memory stays flat.
 /// </summary>
@@ -140,13 +140,13 @@ public sealed class ProcessChainAnalyzer
                 if (parentIsScriptHost && (childIsNetworkTool || childIsScriptHost))
                 {
                     evidence.Add(ChainEv(proc, "chain-script-host-child", Severity.Medium, 0.7,
-                        $"Script host '{parent.Name}' spawned '{proc.Name}' — classic chained execution pattern.",
+                        $"Script host '{parent.Name}' spawned '{proc.Name}' - classic chained execution pattern.",
                         "Execution"));
                 }
                 if (s_officeHosts.Contains(parLower) && (childIsScriptHost || childIsNetworkTool))
                 {
                     evidence.Add(ChainEv(proc, "chain-office-macro-child", Severity.High, 0.8,
-                        $"Office/document host '{parent.Name}' spawned '{proc.Name}' — macro->shell cradle pattern.",
+                        $"Office/document host '{parent.Name}' spawned '{proc.Name}' - macro->shell cradle pattern.",
                         "Execution, Initial Access"));
                 }
                 if (parentIsScriptHost && cmd.Contains("schtasks", StringComparison.OrdinalIgnoreCase))

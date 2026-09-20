@@ -11,7 +11,7 @@ namespace Sentinel.Core.Detection;
 /// The detection engine: converts raw scanner outputs (FileReport, ProcessInfo,
 /// MemoryAnalysisResult, NetworkSnapshot, PersistenceScanResult, SystemAuditResult)
 /// into normalized <see cref="Evidence"/> items by applying a catalog of weighted,
-/// explainable rules. Rules never produce verdicts on their own — they emit
+/// explainable rules. Rules never produce verdicts on their own - they emit
 /// evidence that the correlation engine and risk assessor combine.
 /// </summary>
 public sealed class DetectionEngine
@@ -86,7 +86,7 @@ public sealed class DetectionEngine
             return null; // small files are naturally high-entropy
         }
         return Ev("file", f.Path, "high-entropy-pe", Severity.Medium, 0.55,
-            $"PE file '{f.FileName}' has whole-file entropy {f.Entropy:F2} bits/byte — possible packing/encryption.", f);
+            $"PE file '{f.FileName}' has whole-file entropy {f.Entropy:F2} bits/byte - possible packing/encryption.", f);
     }
 
     public static Evidence? FileRwxSection(FileReport f)
@@ -102,7 +102,7 @@ public sealed class DetectionEngine
             return null;
         }
         return Ev("file", f.Path, "rwx-section", Severity.Medium, 0.6,
-            $"PE section '{rwx.Name}' is both writable and executable (RWX) — classic shellcode habitat.", f,
+            $"PE section '{rwx.Name}' is both writable and executable (RWX) - classic shellcode habitat.", f,
             tactics: [Tactics.DefenseEvasion]);
     }
 
@@ -119,7 +119,7 @@ public sealed class DetectionEngine
             return null;
         }
         return Ev("file", f.Path, "section-runtime-growth", Severity.Low, 0.45,
-            $"PE section '{grown.Name}' virtual size exceeds raw size — runtime growth (possible unpacking).", f);
+            $"PE section '{grown.Name}' virtual size exceeds raw size - runtime growth (possible unpacking).", f);
     }
 
     public static Evidence? FileOverlay(FileReport f)
@@ -141,7 +141,7 @@ public sealed class DetectionEngine
             return null;
         }
         return Ev("file", f.Path, "tls-callbacks", Severity.Low, 0.5,
-            $"PE file declares {pe.TlsCallbacks.Count} TLS callback(s) — code runs before the entry point.", f,
+            $"PE file declares {pe.TlsCallbacks.Count} TLS callback(s) - code runs before the entry point.", f,
             tactics: [Tactics.DefenseEvasion]);
     }
 
@@ -153,7 +153,7 @@ public sealed class DetectionEngine
             return null;
         }
         return Ev("file", f.Path, "no-aslr", Severity.Low, 0.35,
-            $"PE file '{f.FileName}' lacks ASLR (DYNAMIC_BASE) — DEP/ASLR bypass potential.", f);
+            $"PE file '{f.FileName}' lacks ASLR (DYNAMIC_BASE) - DEP/ASLR bypass potential.", f);
     }
 
     public static Evidence? FileNoNx(FileReport f)
@@ -164,7 +164,7 @@ public sealed class DetectionEngine
             return null;
         }
         return Ev("file", f.Path, "no-nx", Severity.Low, 0.35,
-            $"PE file '{f.FileName}' lacks NX_COMPAT — DEP bypass potential.", f);
+            $"PE file '{f.FileName}' lacks NX_COMPAT - DEP bypass potential.", f);
     }
 
     public static Evidence? FileTimestampAnomaly(FileReport f)
@@ -175,7 +175,7 @@ public sealed class DetectionEngine
             return null;
         }
         return Ev("file", f.Path, "timestamp-anomaly", Severity.Low, 0.5,
-            $"PE file '{f.FileName}' has an anomalous link timestamp (zero/future/epoch) — often seen in re-packed malware.", f);
+            $"PE file '{f.FileName}' has an anomalous link timestamp (zero/future/epoch) - often seen in re-packed malware.", f);
     }
 
     public static Evidence? FileFromInternet(FileReport f)
@@ -318,7 +318,7 @@ public sealed class DetectionEngine
             return null;
         }
         return Ev("memory", m.Pid.ToString(), "rwx-private-region", Severity.High, 0.7,
-            $"Process '{m.ProcessName}' (PID {m.Pid}) has a private RWX region at 0x{r.BaseAddress:X} ({r.RegionSize} bytes) — potential injected shellcode.", m,
+            $"Process '{m.ProcessName}' (PID {m.Pid}) has a private RWX region at 0x{r.BaseAddress:X} ({r.RegionSize} bytes) - potential injected shellcode.", m,
             tactics: [Tactics.DefenseEvasion, Tactics.Execution]);
     }
 
@@ -329,7 +329,7 @@ public sealed class DetectionEngine
             return null;
         }
         return Ev("memory", m.Pid.ToString(), "high-entropy-private-exec", Severity.Medium, 0.6,
-            $"Private executable region at 0x{r.BaseAddress:X} has entropy {r.Entropy:F2} — packed/injected code.", m,
+            $"Private executable region at 0x{r.BaseAddress:X} has entropy {r.Entropy:F2} - packed/injected code.", m,
             tactics: [Tactics.DefenseEvasion]);
     }
 
@@ -340,7 +340,7 @@ public sealed class DetectionEngine
             return null;
         }
         return Ev("memory", m.Pid.ToString(), "thread-outside-module", Severity.Medium, 0.65,
-            $"Thread {t.ThreadId} in '{m.ProcessName}' starts at 0x{t.StartAddress:X} — outside any loaded module (T1055 pattern).", m,
+            $"Thread {t.ThreadId} in '{m.ProcessName}' starts at 0x{t.StartAddress:X} - outside any loaded module (T1055 pattern).", m,
             tactics: [Tactics.Execution, Tactics.DefenseEvasion]);
     }
 
@@ -358,7 +358,7 @@ public sealed class DetectionEngine
             return null;
         }
         return Ev("network", ConnKey(c), "suspicious-remote-port", Severity.Medium, 0.5,
-            $"Connection from '{c.ProcessName}' (PID {c.OwningPid}) to {c.RemoteAddress}:{c.RemotePort} — commonly abused port.", c,
+            $"Connection from '{c.ProcessName}' (PID {c.OwningPid}) to {c.RemoteAddress}:{c.RemotePort} - commonly abused port.", c,
             tactics: [Tactics.CommandAndControl]);
     }
 
@@ -448,7 +448,7 @@ public sealed class DetectionEngine
             return null;
         }
         return Ev("system", "system", "uac-disabled", Severity.Medium, 0.6,
-            "UAC is disabled — processes run with full privileges.", a,
+            "UAC is disabled - processes run with full privileges.", a,
             tactics: [Tactics.PrivilegeEscalation]);
     }
 
@@ -478,7 +478,7 @@ public sealed class DetectionEngine
     /// Evidence for processes visible in exactly one enumeration surface.
     /// PIDs only in the native (Toolhelp) view but absent from WMI suggest
     /// userland process hiding; the reverse is usually a race, reported at
-    /// lower severity. No verdict by itself — correlated like all evidence.
+    /// lower severity. No verdict by itself - correlated like all evidence.
     /// </summary>
     public static IReadOnlyList<Evidence> NormalizeProcessViews(ProcessViewDiscrepancy d)
     {
@@ -491,7 +491,7 @@ public sealed class DetectionEngine
         {
             string pids = string.Join(", ", d.OnlyToolhelpPids.Take(20));
             list.Add(Ev("process", "process-view", "process-hidden-from-wmi", Severity.High, 0.7,
-                $"{d.OnlyToolhelpPids.Count} process(es) visible in the native process view but not via WMI — possible process hiding (rootkit artifact). PIDs: {pids}", d,
+                $"{d.OnlyToolhelpPids.Count} process(es) visible in the native process view but not via WMI - possible process hiding (rootkit artifact). PIDs: {pids}", d,
                 tactics: [Tactics.DefenseEvasion, Tactics.Execution]));
         }
         if (d.OnlyWmiPids.Count > 0)
@@ -615,7 +615,7 @@ public sealed class DetectionEngine
     /// <summary>
     /// Bounds evidence details to <see cref="MaxDetailsJsonBytes"/>. Oversized
     /// payloads (full PE import/export tables, verbose scan reports) are replaced
-    /// with a valid-JSON summary that keeps the head of the original — the DB must
+    /// with a valid-JSON summary that keeps the head of the original - the DB must
     /// never grow with scanner verbosity. The historical 52 GB failure came from
     /// exactly this class of unbounded details rows.
     /// </summary>

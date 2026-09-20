@@ -2,7 +2,7 @@ namespace Sentinel.Core.Detection;
 
 /// <summary>
 /// Embedded default rule pack (YARA-lite). Users can drop additional
-/// <c>*.rule</c> files into <c>%ProgramData%\Sentinel\rules</c> — they are
+/// <c>*.rule</c> files into <c>%ProgramData%\Sentinel\rules</c> - they are
 /// merged in at service start (see <see cref="DetectionServices"/>).
 /// </summary>
 public static class DefaultRules

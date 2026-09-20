@@ -59,7 +59,7 @@ internal static class Program
     private static int PrintUsage()
     {
         Console.WriteLine("""
-            Sentinel CLI — endpoint security scanner client
+            Sentinel CLI - endpoint security scanner client
 
             Usage: sentinel <command> [options]
 

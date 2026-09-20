@@ -7,7 +7,7 @@ namespace Sentinel.Core.Json;
 /// <summary>
 /// Serializes <see cref="IPAddress"/> as its string form. The default reflection-based
 /// serializer enumerates public properties, and reading <c>ScopeId</c> throws
-/// <see cref="SocketException"/> for IPv4 addresses — which broke evidence/IPC
+/// <see cref="SocketException"/> for IPv4 addresses - which broke evidence/IPC
 /// serialization for network scans.
 /// </summary>
 public sealed class IpAddressConverter : JsonConverter<IPAddress>

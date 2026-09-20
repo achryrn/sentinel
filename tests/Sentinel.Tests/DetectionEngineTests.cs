@@ -6,7 +6,7 @@ using Sentinel.Core.Signing;
 namespace Sentinel.Tests;
 
 /// <summary>
-/// Detection rule tests using synthetic records only — no real malware, no
+/// Detection rule tests using synthetic records only - no real malware, no
 /// live system scanning. Verifies rules fire on the intended signals and,
 /// critically, do NOT fire on benign inputs (false-positive resistance).
 /// </summary>
@@ -147,7 +147,7 @@ public class DetectionEngineTests
     [Fact]
     public void HighEntropySmallFile_NoEvidence()
     {
-        // Small files are naturally high-entropy — must not fire.
+        // Small files are naturally high-entropy - must not fire.
         var e = DetectionEngine.FileHighEntropy(File(size: 8_000, entropy: 7.9));
         Assert.Null(e);
     }
@@ -537,7 +537,7 @@ public class DetectionEngineTests
     [Fact]
     public void DefenderUnknown_NoFire()
     {
-        // bool? null means "could not determine" — must not fire.
+        // bool? null means "could not determine" - must not fire.
         Assert.Null(DetectionEngine.SystemDefenderDisabled(Audit(defender: null)));
     }
 

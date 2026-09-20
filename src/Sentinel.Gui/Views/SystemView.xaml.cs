@@ -38,7 +38,7 @@ public partial class SystemView : UserControl, IRefreshable
             }
 
             OsText.Text = $"{a.OsVersion} (build {a.OsBuild}, {a.OsEdition})";
-            BootText.Text = a.LastBootUtc is { } boot ? boot.ToLocalTime().ToString("yyyy-MM-dd HH:mm") : "—";
+            BootText.Text = a.LastBootUtc is { } boot ? boot.ToLocalTime().ToString("yyyy-MM-dd HH:mm") : "-";
             UpdateText.Text = a.LastUpdateInstalledUtc is { } upd
                 ? $"{upd.ToLocalTime():yyyy-MM-dd} ({a.DaysSinceLastUpdate ?? -1} days ago)"
                 : "never / unknown";
@@ -48,7 +48,7 @@ public partial class SystemView : UserControl, IRefreshable
             FirewallText.Foreground = a.FirewallEnabled == true ? GoodBrush() : BadBrush();
             UacText.Text = a.UacEnabled == true ? $"Enabled (level {a.UacLevel})" : "Disabled";
             UacText.Foreground = a.UacEnabled == true ? GoodBrush() : BadBrush();
-            AdminText.Text = $"{a.LocalAdminCount} — {string.Join(", ", a.LocalAdmins.Take(3))}";
+            AdminText.Text = $"{a.LocalAdminCount} - {string.Join(", ", a.LocalAdmins.Take(3))}";
             GuestText.Text = a.GuestEnabled ? "Enabled" : "Disabled";
             GuestText.Foreground = a.GuestEnabled ? BadBrush() : GoodBrush();
             RdpText.Text = a.RdpEnabled ? $"Enabled{(a.RdpExposedToPublic ? " · exposed to public" : "")}" : "Disabled";

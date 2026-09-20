@@ -263,7 +263,7 @@ public sealed class FileScanner
         }
         else if (sha256 is null)
         {
-            notes.Add($"File larger than hash cap ({_options.MaxHashSize / (1024 * 1024)} MiB) — hash skipped.");
+            notes.Add($"File larger than hash cap ({_options.MaxHashSize / (1024 * 1024)} MiB) - hash skipped.");
         }
 
         // Known-bad hash blacklist check (when a store is attached and a hash exists).
@@ -302,11 +302,11 @@ public sealed class FileScanner
                 }
                 if (pe.Sections.Any(s => s.IsExecutable && s.IsWritable))
                 {
-                    notes.Add("Executable+Writable section present (RWX) — unusual for normal compilers.");
+                    notes.Add("Executable+Writable section present (RWX) - unusual for normal compilers.");
                 }
                 if (pe.Sections.Any(s => s.Entropy is > Entropy.HighEntropyThreshold))
                 {
-                    notes.Add("Section entropy above 7.2 bits/byte — possible packing/encryption.");
+                    notes.Add("Section entropy above 7.2 bits/byte - possible packing/encryption.");
                 }
                 if (pe.OverlaySize > 0)
                 {
@@ -314,7 +314,7 @@ public sealed class FileScanner
                 }
                 if (pe.TlsCallbacks.Count > 0)
                 {
-                    notes.Add($"{pe.TlsCallbacks.Count} TLS callback(s) — executes before entry point.");
+                    notes.Add($"{pe.TlsCallbacks.Count} TLS callback(s) - executes before entry point.");
                 }
                 if (pe.HasPdb)
                 {
@@ -326,7 +326,7 @@ public sealed class FileScanner
                 }
                 if (!pe.HasNxCompat)
                 {
-                    notes.Add("NX_COMPAT not set — DEP may be disabled.");
+                    notes.Add("NX_COMPAT not set - DEP may be disabled.");
                 }
             }
             else if (pe.Status == PeParseStatus.Corrupt)

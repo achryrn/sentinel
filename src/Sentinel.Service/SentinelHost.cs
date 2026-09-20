@@ -96,7 +96,7 @@ public sealed class SentinelService : ServiceBase
         {
             TimestampUtc = DateTime.UtcNow,
             Category = "system",
-            Message = $"Enabled privileges: {(string.Join(", ", _enabledPrivileges).Length == 0 ? "NONE — run elevated/LocalSystem for full system visibility" : string.Join(", ", _enabledPrivileges))}. Rules: {_detection.Rules.Count}. AMSI: {(_detection.AmsiAvailable ? "available" : "unavailable")}.",
+            Message = $"Enabled privileges: {(string.Join(", ", _enabledPrivileges).Length == 0 ? "NONE - run elevated/LocalSystem for full system visibility" : string.Join(", ", _enabledPrivileges))}. Rules: {_detection.Rules.Count}. AMSI: {(_detection.AmsiAvailable ? "available" : "unavailable")}.",
             Severity = _enabledPrivileges.Count == Privileges.ScannerPrivileges.Length ? EventSeverity.Info : EventSeverity.Warning,
         });
     }
@@ -251,7 +251,7 @@ public sealed class SentinelService : ServiceBase
     {
         // Realtime events are low-confidence signals; they feed correlation but
         // never produce a finding on their own. Deleted/renamed churn stays in
-        // the event log only — it would only add noise to correlation.
+        // the event log only - it would only add noise to correlation.
         string entityId = ev.Entity;
         string? evt = ev.Kind switch
         {
@@ -674,7 +674,7 @@ public sealed class SentinelService : ServiceBase
         }
         var scanner = new MemoryScanner();
         // Dumps live under the store's own data dir, which is deliberately NOT a
-        // realtime watch root — writing to %TEMP% (a watch root) would self-trigger
+        // realtime watch root - writing to %TEMP% (a watch root) would self-trigger
         // file-created events and leak each dump on top of the DB bloat we fixed.
         string dumpDir = Path.Combine(Path.GetDirectoryName(SentinelStore.DefaultDbPath)!, "dumps");
         Directory.CreateDirectory(dumpDir);
@@ -843,7 +843,7 @@ public sealed class SentinelService : ServiceBase
     /// Streaming file scan: never materializes the full report list in memory.
     /// Per-file detection evidence is accumulated in small bounded batches,
     /// correlated and persisted incrementally (with a per-scan correlation
-    /// window), and the IPC response carries only a summary — the per-file
+    /// window), and the IPC response carries only a summary - the per-file
     /// reports were already streamed as events. 500k-file scans now use flat
     /// memory instead of gigabytes of report objects.
     /// </summary>
@@ -1115,7 +1115,7 @@ public sealed class SentinelService : ServiceBase
                 {
                     evidence.AddRange(DetectionEngine.Normalize(process: p));
                 }
-                // Cross-check two independent process views — a process visible
+                // Cross-check two independent process views - a process visible
                 // in only one enumeration surface may be hiding itself.
                 evidence.AddRange(DetectionEngine.NormalizeProcessViews(new ProcessScanner().CompareProcessViews()));
                 break;

@@ -4,7 +4,7 @@ namespace Sentinel.Tests;
 
 /// <summary>
 /// Builds minimal synthetic PE images in memory for parser tests.
-/// Safe simulations only — no real binaries, no execution.
+/// Safe simulations only - no real binaries, no execution.
 /// </summary>
 internal static class PeFactory
 {
@@ -87,7 +87,7 @@ internal static class PeFactory
         BinaryPrimitives.WriteUInt64LittleEndian(buf.AsSpan(p + 96, 8), 0x1000); // SizeOfHeapCommit
         BinaryPrimitives.WriteUInt32LittleEndian(buf.AsSpan(p + 104, 4), 0); // LoaderFlags
         BinaryPrimitives.WriteUInt32LittleEndian(buf.AsSpan(p + 108, 4), 16); // NumberOfRvaAndSizes
-        // Data directories (16 × 8 bytes) all zero — no imports/exports/TLS/debug.
+        // Data directories (16 × 8 bytes) all zero - no imports/exports/TLS/debug.
         // (p + 112 .. p + 240 remain zero)
 
         // ---- Section table (1 × 40 bytes) ----

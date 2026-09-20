@@ -103,7 +103,7 @@ public sealed class QuarantineManager
         {
             TimestampUtc = DateTime.UtcNow,
             Category = "quarantine",
-            Message = $"Quarantined '{path}' ({item.Sha256[..16]}…) — {reason}",
+            Message = $"Quarantined '{path}' ({item.Sha256[..16]}…) - {reason}",
             Severity = Models.EventSeverity.Warning,
             Entity = path,
         });
@@ -178,7 +178,7 @@ public sealed class QuarantineManager
                 {
                     TimestampUtc = DateTime.UtcNow,
                     Category = "quarantine",
-                    Message = $"Restore failed hash verification for '{item.OriginalPath}' — file removed",
+                    Message = $"Restore failed hash verification for '{item.OriginalPath}' - file removed",
                     Severity = Models.EventSeverity.Error,
                     Entity = item.OriginalPath,
                 });

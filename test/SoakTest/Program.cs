@@ -24,7 +24,7 @@ var dir = Path.GetDirectoryName(dbPath)!;
 var attacker = Task.Run(() =>
 {
     // Write directly into the store's own directory so the cleanup loop,
-    // checkpoint/VACUUM and watchers all churn against it — repeat of the incident.
+    // checkpoint/VACUUM and watchers all churn against it - repeat of the incident.
     while (sw.Elapsed < stop)
     {
         int n = rng.Next(1, 20);
@@ -49,7 +49,7 @@ async Task IngestLoop()
     // Simulated realtime event storm: unique entities + repeated same-entity
     // events. Same-entity repeats must coalesce via the Evidence dedupe key so
     // table sizes stay near the caps, not at the churn rate. Duplicates are legal
-    // WITHIN one batch too — a drain batch can hold two events with the same
+    // WITHIN one batch too - a drain batch can hold two events with the same
     // entity+event (e.g. two changes to one file within 2 s).
     while (sw.Elapsed < stop)
     {

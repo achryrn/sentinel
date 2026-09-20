@@ -40,7 +40,7 @@ public partial class FilesView : UserControl, IRefreshable
             // No explicit target: fall back to a general-location scan with confirmation.
             var choice = MessageBox.Show(
                 "No path was entered.\n\nWould you like to run a Quick scan instead (user profile + program data)?\n\nClick Yes to scan those general locations, or No to enter a path manually.",
-                "Sentinel — No scan target",
+                "Sentinel - No scan target",
                 MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
             if (choice == MessageBoxResult.Yes)
             {

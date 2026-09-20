@@ -134,14 +134,14 @@ public sealed class DetectionServices : IDisposable
                 }
             }
 
-            // 1) AMSI — every provider on the box gets a vote.
+            // 1) AMSI - every provider on the box gets a vote.
             if (_amsi.Scan(bytes, Path.GetFileName(path)) == AmsiVerdict.Detected)
             {
                 evidence.Add(Ev(path, "amsi-detected", Severity.Critical, 0.95,
                     "AMSI provider flagged this content as malicious.", "Execution, Defense Evasion"));
             }
 
-            // 2) Rule engine — signature matches on content.
+            // 2) Rule engine - signature matches on content.
             foreach (var match in RuleEngine.Match(bytes, _rules))
             {
                 var r = match.Rule;

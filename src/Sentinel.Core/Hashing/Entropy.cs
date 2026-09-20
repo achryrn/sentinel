@@ -82,7 +82,7 @@ public static class Entropy
 
     /// <summary>
     /// Classification helper: entropy above this value for a full PE section suggests packing/encryption.
-    /// (Common heuristic; never used alone as a detection — always correlated with other evidence.)
+    /// (Common heuristic; never used alone as a detection - always correlated with other evidence.)
     /// </summary>
     public const double HighEntropyThreshold = 7.2;
 }
