@@ -200,3 +200,5 @@ Soak-verified: a 2-minute evidence storm plus a 60-second settle keeps the DB at
 - [docs/RESEARCH.md](docs/RESEARCH.md): technical research on Windows internals, PE/COFF, Authenticode, MITRE ATT&CK, AMSI, and related tooling.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): architecture and data model.
 - [docs/REPORT.md](docs/REPORT.md): the final 16-section implementation report.
+
+<!-- last-verified: 2026-09-26 02:10 UTC -->
